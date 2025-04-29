@@ -1,3 +1,10 @@
 {
-  "extends": "@devvit/public-api/devvit.tsconfig.json"
+  "extends": "@devvit/public-api/devvit.tsconfig.json",
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true, // Add this if your TypeScript version supports it
+    "noEmit": true,
+    "types": ["@vitest/globals"]
+  }
 }
