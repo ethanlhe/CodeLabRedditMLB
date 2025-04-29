@@ -1,4 +1,4 @@
-import { GameInfo } from '../types/game.js';
+import { GameInfo } from '../types/game.ts';
 import { Devvit } from '@devvit/public-api';
 
 export function renderPreGame(gameInfo: GameInfo) {

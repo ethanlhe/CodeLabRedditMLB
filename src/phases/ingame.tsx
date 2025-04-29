@@ -1,5 +1,5 @@
 import { Devvit } from '@devvit/public-api';
-import { GameInfo, Score } from '../types/game.js';
+import { GameInfo, Score } from '../types/game.ts';
 
 interface InGameProps {
   gameInfo: GameInfo;

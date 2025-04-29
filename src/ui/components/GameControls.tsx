@@ -1,5 +1,5 @@
 import { Devvit } from '@devvit/public-api';
-import { GamePhase } from '../../types/game.js';
+import { GamePhase } from '../../types/game.ts';
 
 interface GameStateControlsProps {
   onPhaseChange: (phase: GamePhase) => void;

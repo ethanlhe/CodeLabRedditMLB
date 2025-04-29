@@ -1,5 +1,5 @@
 import { Devvit } from '@devvit/public-api';
-import { GameInfo, GamePhase } from '../../types/game.js';
+import { GameInfo, GamePhase } from '../../types/game.ts';
 
 interface HeaderProps {
   gameInfo: GameInfo;

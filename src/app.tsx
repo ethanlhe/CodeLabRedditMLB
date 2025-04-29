@@ -1,9 +1,9 @@
 import { Devvit, useState } from '@devvit/public-api';
-import { renderPreGame } from './phases/pregame.js';
-import { renderInGame } from './phases/ingame.js';
-import { renderPostGame } from './phases/postgame.js';
-import { GameStateControls } from './ui/components/GameControls.js';
-import { Header } from './ui/components/Header.ts';
+import { renderPreGame } from './phases/pregame.ts';
+import { renderInGame } from './phases/ingame.ts';
+import { renderPostGame } from './phases/postgame.ts';
+import { GameStateControls } from './ui/components/GameControls.tsx';
+import { Header } from './ui/components/Header.tsx';
 import { GamePhase } from './types/game.ts';
 
 export function setupBaseballApp() {
