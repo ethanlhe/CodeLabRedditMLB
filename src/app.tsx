@@ -5,10 +5,12 @@ import { renderPostGame } from './phases/postgame.tsx';
 import { GameStateControls } from './ui/components/GameControls.tsx';
 import { Header } from './ui/components/Header.tsx';
 import { GamePhase } from './types/game.ts';
+import { testSportradarAPI } from './api/sportradarTest.ts';
 
 export function setupBaseballApp() {
     Devvit.configure({
         redditAPI: true,
+        http: true,  // Enable HTTP capabilities for external API calls
     });
       
     // Add a menu item to the subreddit menu for instantiating the new experience post
@@ -41,6 +43,7 @@ export function setupBaseballApp() {
     render: () => {
       const [gamePhase, setGamePhase] = useState<GamePhase>('pre');
       const [score, setScore] = useState({ home: 0, away: 0 });
+      const [apiMessage, setApiMessage] = useState<string | null>(null);
       
       const gameInfo = {
         league: 'MLB',
@@ -56,8 +59,28 @@ export function setupBaseballApp() {
              : 'Final'
       };
 
+      const testAPI = async () => {
+        setApiMessage('Testing API...');
+        try {
+          const result = await testSportradarAPI();
+          console.log('Full API Response:', result);  // Log everything
+          if (result.success) {
+            setApiMessage('✓ API test successful!');
+          } else {
+            setApiMessage('✗ API test failed');
+          }
+        } catch (error) {
+          console.error('API test failed:', error);
+          setApiMessage('✗ API test failed');
+        }
+      };
+
       return (
         <vstack width="100%" backgroundColor="transparent" gap="medium">
+          <hstack gap="medium" alignment="center middle">
+            <button onPress={testAPI}>Test Sportradar API</button>
+            {apiMessage && <text>{apiMessage}</text>}
+          </hstack>
           <GameStateControls onPhaseChange={setGamePhase} />
           <Header gamePhase={gamePhase} gameInfo={gameInfo} />
           {gamePhase === 'pre' && renderPreGame(gameInfo)}
