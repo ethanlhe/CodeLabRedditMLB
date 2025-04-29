@@ -1,7 +1,7 @@
 import { Devvit, useState } from '@devvit/public-api';
-import { renderPreGame } from './phases/pregame.ts';
-import { renderInGame } from './phases/ingame.ts';
-import { renderPostGame } from './phases/postgame.ts';
+import { renderPreGame } from './phases/pregame.tsx';
+import { renderInGame } from './phases/ingame.tsx';
+import { renderPostGame } from './phases/postgame.tsx';
 import { GameStateControls } from './ui/components/GameControls.tsx';
 import { Header } from './ui/components/Header.tsx';
 import { GamePhase } from './types/game.ts';
