@@ -4,6 +4,13 @@ export type SubTab = 'summary' | 'lineups' | 'preview' | 'stats' | 'boxscore' | 
 export interface TeamInfo {
   name: string;
   record: string;
+  [key: string]: string | undefined;
+}
+
+export interface ProbablePitchers {
+  home?: string;
+  away?: string;
+  [key: string]: string | undefined;
 }
 
 export interface GameInfo {
@@ -14,6 +21,8 @@ export interface GameInfo {
   awayTeam: TeamInfo;
   currentTime: string;
   status: string;
+  probablePitchers?: ProbablePitchers;
+  [key: string]: string | TeamInfo | ProbablePitchers | undefined;
 }
 
 export interface Score {
