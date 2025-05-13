@@ -1,5 +1,4 @@
-import { Devvit, useForm, useState } from '@devvit/public-api';
-import sportradarBaseball from '@api/sportradar-baseball';
+import { Devvit, useState, useForm } from '@devvit/public-api';
 
 Devvit.configure({
   redditAPI: true,
@@ -16,20 +15,27 @@ Devvit.addCustomPostType({
     const [boxscore, setBoxscore] = useState<string | null>(null);
 
     const fetchBoxScore = async (id: string) => {
+      const apiKey = 'lmTPYOsFUb8uRUQPe2ooVIWqjLpUldelM9wu5EuP';
+      const accessLevel = 'trial';
+      const languageCode = 'en';
+      const format = 'json';
+
+      const url = `https://api.sportradar.us/mlb/${accessLevel}/${languageCode}/games/${id}/boxscore.${format}?api_key=${apiKey}`;
+
       try {
-        const { data } = await sportradarBaseball.mlbGameBoxscore({
-          access_level: 'trial',
-          language_code: 'en',
-          game_id: id,
-          format: 'json',
-        });
-        setBoxscore(JSON.stringify(data, null, 2));
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          setBoxscore(JSON.stringify(data, null, 2));
+        } else {
+          setBoxscore(`Failed to fetch boxscore: ${response.status}`);
+        }
       } catch (err) {
         setBoxscore(`Error: ${(err as Error).message}`);
       }
     };
 
-    const form = useForm(
+    const gameForm = useForm(
       {
         fields: [
           {
@@ -47,9 +53,11 @@ Devvit.addCustomPostType({
     );
 
     return (
-      <vstack gap="medium" alignment="middle center">
-        <text>Game ID: {gameId}</text>
-        <button onPress={() => context.ui.showForm(form)}>Get Boxscore</button>
+      <vstack gap="medium" height="100%" alignment="middle center">
+        <text>MLB Game ID: {gameId}</text>
+        <button onPress={() => context.ui.showForm(gameForm)}>
+          Get Boxscore
+        </button>
         {boxscore && <text wrap>{boxscore}</text>}
       </vstack>
     );
