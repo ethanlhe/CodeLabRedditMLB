@@ -239,66 +239,75 @@ export function setupBaseballApp() {
         render: (context) => {
             console.log('[Render] Context:', context);
             
+            const [isLoading, setIsLoading] = useState(true);
             const [gamePhase, setGamePhase] = useState<GamePhase>('pre');
             const [score, setScore] = useState<Score>({ home: 0, away: 0 });
-            const [gameId, setGameId] = useState<string>(() => {
-                // Initialize from the global currentGameData if available
-                if (currentGameData) {
-                    console.log('[Render] Setting game ID from global state:', currentGameData.id);
-                    return currentGameData.id;
-                }
-                console.log('[Render] No game ID available');
-                return '';
-            });
-            const [gameInfo, setGameInfo] = useState<GameInfo>(() => {
-                // Initialize from the global currentGameData if available
-                if (currentGameData) {
-                    const initialInfo = parseGameBoxscore(currentGameData);
-                    console.log('[Render] Initializing Game Info from global state:', initialInfo);
-                    return initialInfo;
-                }
-                
-                console.log('[Render] No game data available');
-                return {
+            const [gameId, setGameId] = useState<string>('');
+            const [gameInfo, setGameInfo] = useState<GameInfo>({
+                id: '',
+                league: 'MLB',
+                date: '',
+                location: '',
+                homeTeam: {
                     id: '',
-                    league: 'MLB',
-                    date: '',
-                    location: '',
-                    homeTeam: {
-                        id: '',
-                        name: '',
-                        market: '',
-                        record: '',
-                        runs: 0
-                    },
-                    awayTeam: {
-                        id: '',
-                        name: '',
-                        market: '',
-                        record: '',
-                        runs: 0
-                    },
-                    currentTime: '',
-                    status: '',
-                    probablePitchers: null,
-                    weather: null,
-                    broadcasts: null
-                };
+                    name: '',
+                    market: '',
+                    record: '',
+                    runs: 0
+                },
+                awayTeam: {
+                    id: '',
+                    name: '',
+                    market: '',
+                    record: '',
+                    runs: 0
+                },
+                currentTime: '',
+                status: '',
+                probablePitchers: null,
+                weather: null,
+                broadcasts: null
             });
 
             // Load game data from Redis when component mounts
-            if (context.postId && !gameId) {
-                context.redis.get(`game_${context.postId}`).then(storedGameStr => {
-                    if (storedGameStr) {
-                        const storedGame = JSON.parse(storedGameStr) as GameBoxscore;
-                        console.log('[Render] Found game data in Redis:', storedGame);
-                        setGameId(storedGame.id);
-                        const initialInfo = parseGameBoxscore(storedGame);
-                        console.log('[Render] Setting game info from Redis:', initialInfo);
-                        setGameInfo(initialInfo);
+            if (context.postId) {
+                // Use context.useState to ensure state updates are properly handled
+                context.useState(async () => {
+                    try {
+                        const storedGameStr = await context.redis.get(`game_${context.postId}`);
+                        if (storedGameStr) {
+                            const storedGame = JSON.parse(storedGameStr) as GameBoxscore;
+                            console.log('[Render] Found game data in Redis:', storedGame);
+                            
+                            // Set the game ID
+                            setGameId(storedGame.id);
+                            
+                            // Parse and set the game info
+                            const initialInfo = parseGameBoxscore(storedGame);
+                            console.log('[Render] Setting game info from Redis:', initialInfo);
+                            setGameInfo(initialInfo);
+                            
+                            // Set the game phase
+                            const phase = storedGame.status === 'scheduled' ? 'pre' :
+                                        storedGame.status === 'in-progress' ? 'live' :
+                                        storedGame.status === 'closed' ? 'post' : 'pre';
+                            setGamePhase(phase);
+                            
+                            // Set the score if the game is live or closed
+                            if (phase !== 'pre') {
+                                setScore({
+                                    home: storedGame.home.runs || 0,
+                                    away: storedGame.away.runs || 0
+                                });
+                            }
+                        } else {
+                            console.log('[Render] No game data found in Redis');
+                        }
+                    } catch (error) {
+                        console.error('[Render] Error getting game data from Redis:', error);
+                    } finally {
+                        setIsLoading(false);
                     }
-                }).catch(error => {
-                    console.error('[Render] Error getting game data from Redis:', error);
                 });
             }
 
@@ -309,6 +318,30 @@ export function setupBaseballApp() {
                 }
                 
                 try {
+                    // Check Redis cache first
+                    const cachedData = await context.redis.get(`boxscore_${id}`);
+                    if (cachedData) {
+                        const data = JSON.parse(cachedData);
+                        console.log('[fetchBoxScore] Using cached data for game:', id);
+                        
+                        // Update game phase and info from cached data
+                        const phase = data.game.status === 'scheduled' ? 'pre' : 
+                                    data.game.status === 'in-progress' ? 'live' : 
+                                    data.game.status === 'closed' ? 'post' : 'pre';
+                        setGamePhase(phase);
+                        
+                        const parsedGameInfo = parseGameBoxscore(data.game);
+                        setGameInfo(parsedGameInfo);
+                        
+                        if (phase !== 'pre') {
+                            setScore({
+                                home: data.game.home.runs || 0,
+                                away: data.game.away.runs || 0
+                            });
+                        }
+                        return;
+                    }
+
                     console.log('[fetchBoxScore] Fetching boxscore for game:', id);
                     const response = await fetch(`https://api.sportradar.us/mlb/trial/v8/en/games/${id}/boxscore.json?api_key=${API_KEY}`);
                     if (!response.ok) {
@@ -317,50 +350,18 @@ export function setupBaseballApp() {
                     const data = await response.json();
                     console.log('[fetchBoxScore] Received data:', data);
                     
+                    // Cache the data in Redis
+                    await context.redis.set(`boxscore_${id}`, JSON.stringify(data));
+                    
                     // Determine game phase based on status
                     const phase = data.game.status === 'scheduled' ? 'pre' : 
-                                 data.game.status === 'in-progress' ? 'live' : 'post';
+                                 data.game.status === 'in-progress' ? 'live' : 
+                                 data.game.status === 'closed' ? 'post' : 'pre';
+                    console.log('[fetchBoxScore] Setting game phase:', phase, 'for status:', data.game.status);
                     setGamePhase(phase);
 
                     // Parse and update game info
-                    const parsedGameInfo: GameInfo = {
-                        id: data.game.id,
-                        league: 'MLB',
-                        date: new Date(data.game.scheduled).toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            month: 'long',
-                            day: 'numeric',
-                            year: 'numeric'
-                        }),
-                        location: data.game.venue.name,
-                        homeTeam: {
-                            id: data.game.home.id,
-                            name: data.game.home.name,
-                            market: data.game.home.market,
-                            record: `${data.game.home.win}-${data.game.home.loss}`,
-                            runs: data.game.home.runs
-                        },
-                        awayTeam: {
-                            id: data.game.away.id,
-                            name: data.game.away.name,
-                            market: data.game.away.market,
-                            record: `${data.game.away.win}-${data.game.away.loss}`,
-                            runs: data.game.away.runs
-                        },
-                        currentTime: new Date(data.game.scheduled).toLocaleTimeString('en-US', {
-                            timeZone: data.game.venue.time_zone,
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true
-                        }),
-                        status: data.game.status,
-                        probablePitchers: {
-                            home: data.game.home.probable_pitcher?.full_name || null,
-                            away: data.game.away.probable_pitcher?.full_name || null
-                        },
-                        weather: null, // Weather info not available in this endpoint
-                        broadcasts: data.game.broadcasts?.map((b: any) => b.network).join(', ') || null
-                    };
+                    const parsedGameInfo = parseGameBoxscore(data.game);
                     console.log('[fetchBoxScore] Setting game info:', parsedGameInfo);
                     setGameInfo(parsedGameInfo);
 
@@ -369,12 +370,13 @@ export function setupBaseballApp() {
                         await context.redis.set(`game_${context.postId}`, JSON.stringify(data.game));
                     }
 
-                    // Update scores if game is in progress or complete
+                    // Update scores for both live and closed games
                     if (phase !== 'pre') {
                         const newScore: Score = {
-                            home: data.game.home.runs,
-                            away: data.game.away.runs
+                            home: data.game.home.runs || 0,
+                            away: data.game.away.runs || 0
                         };
+                        console.log('[fetchBoxScore] Setting score:', newScore);
                         setScore(newScore);
                     }
                 } catch (error) {
@@ -383,7 +385,7 @@ export function setupBaseballApp() {
             };
 
             // Use the game ID from state to fetch boxscore
-            if (gameId) {
+            if (gameId && !isLoading) {
                 console.log('[Render] Fetching initial boxscore for game:', gameId);
                 // Initial fetch
                 fetchBoxScore(gameId);
@@ -391,9 +393,14 @@ export function setupBaseballApp() {
                 // Schedule periodic updates with rate limiting
                 const updateInterval = 60000; // 1 minute to avoid rate limits
                 let lastFetchTime = Date.now();
+                let updateTimer: NodeJS.Timeout | null = null;
                 
                 const scheduleNextUpdate = () => {
-                    setTimeout(() => {
+                    if (updateTimer) {
+                        clearTimeout(updateTimer);
+                    }
+                    
+                    updateTimer = setTimeout(() => {
                         if (gameId) {
                             const now = Date.now();
                             if (now - lastFetchTime >= updateInterval) {
@@ -407,10 +414,26 @@ export function setupBaseballApp() {
                 };
                 
                 scheduleNextUpdate();
+                
+                // Cleanup timer on unmount
+                const cleanup = () => {
+                    if (updateTimer) {
+                        clearTimeout(updateTimer);
+                    }
+                };
+                cleanup();
+            }
+
+            if (isLoading) {
+                return (
+                    <vstack padding="medium" gap="medium" alignment="middle center">
+                        <text size="large">Loading Baseball Scorecard...</text>
+                    </vstack>
+                );
             }
 
             return (
-                <vstack width="100%" backgroundColor="transparent" gap="medium">
+                <vstack padding="medium" gap="medium">
                     <GameStateControls onPhaseChange={setGamePhase} />
                     <Header gamePhase={gamePhase} gameInfo={gameInfo} />
                     {gamePhase === 'pre' && renderPreGame({ gameInfo })}
