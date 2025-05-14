@@ -63,6 +63,7 @@ export function setupBaseballApp() {
     Devvit.configure({
         redditAPI: true,
         http: true,
+        redis: true,
     });
 
     // Register the date selection form
@@ -104,9 +105,6 @@ export function setupBaseballApp() {
                     return;
                 }
 
-                console.log('Schedule API Response:', JSON.stringify(data, null, 2));
-                console.log('Available Games:', data.games.map((g: any) => ({ id: g.id, teams: `${g.away.name} @ ${g.home.name}` })));
-
                 // Create game selection form with the fetched games
                 const gameSelectionForm = Devvit.createForm(
                     {
@@ -134,9 +132,6 @@ export function setupBaseballApp() {
                         const { reddit, ui } = gameContext;
                         const { gameId, title } = gameEvent.values;
                         
-                        console.log('Selected Game ID:', gameId);
-                        console.log('Available Games in Selection:', data.games.map((g: any) => g.id));
-                        
                         try {
                             // Extract the game ID from the array if it's in that format
                             const actualGameId = Array.isArray(gameId) ? gameId[0] : gameId;
@@ -155,6 +150,45 @@ export function setupBaseballApp() {
 
                             // Store the complete game data
                             currentGameData = selectedGame;
+                            
+                            // Initialize the game info with the selected game data
+                            const initialGameInfo: GameInfo = {
+                                id: selectedGame.id,
+                                league: 'MLB',
+                                date: new Date(selectedGame.scheduled).toLocaleDateString('en-US', {
+                                    weekday: 'long',
+                                    month: 'long',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                }),
+                                location: selectedGame.venue.name,
+                                homeTeam: {
+                                    id: selectedGame.home.id,
+                                    name: selectedGame.home.name,
+                                    market: selectedGame.home.market,
+                                    record: `${selectedGame.home.win}-${selectedGame.home.loss}`,
+                                    runs: 0
+                                },
+                                awayTeam: {
+                                    id: selectedGame.away.id,
+                                    name: selectedGame.away.name,
+                                    market: selectedGame.away.market,
+                                    record: `${selectedGame.away.win}-${selectedGame.away.loss}`,
+                                    runs: 0
+                                },
+                                currentTime: new Date(selectedGame.scheduled).toLocaleTimeString('en-US', {
+                                    timeZone: selectedGame.venue.time_zone,
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                    hour12: true
+                                }),
+                                status: selectedGame.status,
+                                probablePitchers: null,
+                                weather: null,
+                                broadcasts: selectedGame.broadcasts?.map((b: any) => b.network).join(', ') || null
+                            };
+
+                            console.log('[Game Selection] Initial Game Info:', initialGameInfo);
                             
                             ui.showToast("Creating your baseball scorecard - you'll be navigated there upon completion.");
                         
@@ -200,41 +234,152 @@ export function setupBaseballApp() {
         name: 'Baseball Scorecard-ehe',
         height: 'tall',
         render: (context) => {
+            console.log('[Render] Context:', context);
+            
             const [gamePhase, setGamePhase] = useState<GamePhase>('pre');
             const [score, setScore] = useState<Score>({ home: 0, away: 0 });
-            const [gameInfo, setGameInfo] = useState<GameInfo>({
-                id: '',
-                league: 'MLB',
-                date: '',
-                location: '',
-                homeTeam: {
+            const [gameId, setGameId] = useState<string>(() => {
+                // Initialize from the global currentGameData if available
+                if (currentGameData) {
+                    console.log('[Render] Setting game ID from global state:', currentGameData.id);
+                    return currentGameData.id;
+                }
+                console.log('[Render] No game ID available');
+                return '';
+            });
+            const [gameInfo, setGameInfo] = useState<GameInfo>(() => {
+                // Initialize from the global currentGameData if available
+                if (currentGameData) {
+                    const initialInfo: GameInfo = {
+                        id: currentGameData.id,
+                        league: 'MLB',
+                        date: new Date(currentGameData.scheduled).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            month: 'long',
+                            day: 'numeric',
+                            year: 'numeric'
+                        }),
+                        location: currentGameData.venue.name,
+                        homeTeam: {
+                            id: currentGameData.home.id,
+                            name: currentGameData.home.name,
+                            market: currentGameData.home.market,
+                            record: `${currentGameData.home.win}-${currentGameData.home.loss}`,
+                            runs: 0
+                        },
+                        awayTeam: {
+                            id: currentGameData.away.id,
+                            name: currentGameData.away.name,
+                            market: currentGameData.away.market,
+                            record: `${currentGameData.away.win}-${currentGameData.away.loss}`,
+                            runs: 0
+                        },
+                        currentTime: new Date(currentGameData.scheduled).toLocaleTimeString('en-US', {
+                            timeZone: currentGameData.venue.time_zone,
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                        }),
+                        status: currentGameData.status,
+                        probablePitchers: null,
+                        weather: null,
+                        broadcasts: currentGameData.broadcasts?.map((b: any) => b.network).join(', ') || null
+                    };
+                    console.log('[Render] Initializing Game Info from global state:', initialInfo);
+                    return initialInfo;
+                }
+                
+                console.log('[Render] No game data available');
+                return {
                     id: '',
-                    name: '',
-                    market: '',
-                    record: '',
-                    runs: 0
-                },
-                awayTeam: {
-                    id: '',
-                    name: '',
-                    market: '',
-                    record: '',
-                    runs: 0
-                },
-                currentTime: '',
-                status: '',
-                probablePitchers: null,
-                weather: null,
-                broadcasts: null
+                    league: 'MLB',
+                    date: '',
+                    location: '',
+                    homeTeam: {
+                        id: '',
+                        name: '',
+                        market: '',
+                        record: '',
+                        runs: 0
+                    },
+                    awayTeam: {
+                        id: '',
+                        name: '',
+                        market: '',
+                        record: '',
+                        runs: 0
+                    },
+                    currentTime: '',
+                    status: '',
+                    probablePitchers: null,
+                    weather: null,
+                    broadcasts: null
+                };
             });
 
-            const fetchBoxScore = async (gameId: string) => {
+            // Load game data from Redis when component mounts
+            if (context.postId && !gameId) {
+                context.redis.get(`game_${context.postId}`).then(storedGameStr => {
+                    if (storedGameStr) {
+                        const storedGame = JSON.parse(storedGameStr) as GameBoxscore;
+                        console.log('[Render] Found game data in Redis:', storedGame);
+                        setGameId(storedGame.id);
+                        const initialInfo: GameInfo = {
+                            id: storedGame.id,
+                            league: 'MLB',
+                            date: new Date(storedGame.scheduled).toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                month: 'long',
+                                day: 'numeric',
+                                year: 'numeric'
+                            }),
+                            location: storedGame.venue.name,
+                            homeTeam: {
+                                id: storedGame.home.id,
+                                name: storedGame.home.name,
+                                market: storedGame.home.market,
+                                record: `${storedGame.home.win}-${storedGame.home.loss}`,
+                                runs: 0
+                            },
+                            awayTeam: {
+                                id: storedGame.away.id,
+                                name: storedGame.away.name,
+                                market: storedGame.away.market,
+                                record: `${storedGame.away.win}-${storedGame.away.loss}`,
+                                runs: 0
+                            },
+                            currentTime: new Date(storedGame.scheduled).toLocaleTimeString('en-US', {
+                                timeZone: storedGame.venue.time_zone,
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true
+                            }),
+                            status: storedGame.status,
+                            probablePitchers: null,
+                            weather: null,
+                            broadcasts: storedGame.broadcasts?.map((b: any) => b.network).join(', ') || null
+                        };
+                        setGameInfo(initialInfo);
+                    }
+                }).catch(error => {
+                    console.error('[Render] Error getting game data from Redis:', error);
+                });
+            }
+
+            const fetchBoxScore = async (id: string) => {
+                if (!id) {
+                    console.log('[fetchBoxScore] No game ID provided');
+                    return;
+                }
+                
                 try {
-                    const response = await fetch(`https://api.sportradar.us/mlb/trial/v8/en/games/${gameId}/boxscore.json?api_key=${API_KEY}`);
+                    console.log('[fetchBoxScore] Fetching boxscore for game:', id);
+                    const response = await fetch(`https://api.sportradar.us/mlb/trial/v8/en/games/${id}/boxscore.json?api_key=${API_KEY}`);
                     if (!response.ok) {
                         throw new Error('Failed to fetch boxscore');
                     }
                     const data = await response.json();
+                    console.log('[fetchBoxScore] Received data:', data);
                     
                     // Determine game phase based on status
                     const phase = data.game.status === 'scheduled' ? 'pre' : 
@@ -280,7 +425,13 @@ export function setupBaseballApp() {
                         weather: null, // Weather info not available in this endpoint
                         broadcasts: data.game.broadcasts?.map((b: any) => b.network).join(', ') || null
                     };
+                    console.log('[fetchBoxScore] Setting game info:', parsedGameInfo);
                     setGameInfo(parsedGameInfo);
+
+                    // Store updated game data in Redis
+                    if (context.postId) {
+                        await context.redis.set(`game_${context.postId}`, JSON.stringify(data.game));
+                    }
 
                     // Update scores if game is in progress or complete
                     if (phase !== 'pre') {
@@ -291,15 +442,29 @@ export function setupBaseballApp() {
                         setScore(newScore);
                     }
                 } catch (error) {
-                    console.error('Error fetching boxscore:', error);
+                    console.error('[fetchBoxScore] Error:', error);
                 }
             };
 
-            // Use the global game data to fetch boxscore
-            if (currentGameData) {
-                fetchBoxScore(currentGameData.id);
-                // Clear the game data after using it
-                currentGameData = null;
+            // Use the game ID from state to fetch boxscore
+            if (gameId) {
+                console.log('[Render] Fetching initial boxscore for game:', gameId);
+                // Initial fetch
+                fetchBoxScore(gameId);
+                
+                // Schedule periodic updates
+                const updateInterval = 30000; // 30 seconds
+                const scheduleNextUpdate = () => {
+                    setTimeout(() => {
+                        if (gameId) {
+                            console.log('[Render] Fetching periodic update for game:', gameId);
+                            fetchBoxScore(gameId);
+                            scheduleNextUpdate();
+                        }
+                    }, updateInterval);
+                };
+                
+                scheduleNextUpdate();
             }
 
             return (
