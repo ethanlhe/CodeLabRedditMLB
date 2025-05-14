@@ -35,15 +35,15 @@ function parseGameBoxscore(data: GameBoxscore): GameInfo {
       id: data.home.id,
       name: data.home.name,
       market: data.home.market,
-      record: data.home.record,
-      runs: data.home.runs
+      record: `${data.home.win || 0}-${data.home.loss || 0}`,
+      runs: data.home.runs || 0
     },
     awayTeam: {
       id: data.away.id,
       name: data.away.name,
       market: data.away.market,
-      record: data.away.record,
-      runs: data.away.runs
+      record: `${data.away.win || 0}-${data.away.loss || 0}`,
+      runs: data.away.runs || 0
     },
     currentTime: formattedTime,
     status: data.status,
@@ -203,6 +203,9 @@ export function setupBaseballApp() {
                                 ),
                             });
 
+                            // Store the game data in Redis before navigating
+                            await gameContext.redis.set(`game_${post.id}`, JSON.stringify(selectedGame));
+
                             // Navigate to the post
                             ui.navigateTo(post);
                         } catch (error) {
@@ -250,41 +253,7 @@ export function setupBaseballApp() {
             const [gameInfo, setGameInfo] = useState<GameInfo>(() => {
                 // Initialize from the global currentGameData if available
                 if (currentGameData) {
-                    const initialInfo: GameInfo = {
-                        id: currentGameData.id,
-                        league: 'MLB',
-                        date: new Date(currentGameData.scheduled).toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            month: 'long',
-                            day: 'numeric',
-                            year: 'numeric'
-                        }),
-                        location: currentGameData.venue.name,
-                        homeTeam: {
-                            id: currentGameData.home.id,
-                            name: currentGameData.home.name,
-                            market: currentGameData.home.market,
-                            record: `${currentGameData.home.win}-${currentGameData.home.loss}`,
-                            runs: 0
-                        },
-                        awayTeam: {
-                            id: currentGameData.away.id,
-                            name: currentGameData.away.name,
-                            market: currentGameData.away.market,
-                            record: `${currentGameData.away.win}-${currentGameData.away.loss}`,
-                            runs: 0
-                        },
-                        currentTime: new Date(currentGameData.scheduled).toLocaleTimeString('en-US', {
-                            timeZone: currentGameData.venue.time_zone,
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true
-                        }),
-                        status: currentGameData.status,
-                        probablePitchers: null,
-                        weather: null,
-                        broadcasts: currentGameData.broadcasts?.map((b: any) => b.network).join(', ') || null
-                    };
+                    const initialInfo = parseGameBoxscore(currentGameData);
                     console.log('[Render] Initializing Game Info from global state:', initialInfo);
                     return initialInfo;
                 }
@@ -324,41 +293,8 @@ export function setupBaseballApp() {
                         const storedGame = JSON.parse(storedGameStr) as GameBoxscore;
                         console.log('[Render] Found game data in Redis:', storedGame);
                         setGameId(storedGame.id);
-                        const initialInfo: GameInfo = {
-                            id: storedGame.id,
-                            league: 'MLB',
-                            date: new Date(storedGame.scheduled).toLocaleDateString('en-US', {
-                                weekday: 'long',
-                                month: 'long',
-                                day: 'numeric',
-                                year: 'numeric'
-                            }),
-                            location: storedGame.venue.name,
-                            homeTeam: {
-                                id: storedGame.home.id,
-                                name: storedGame.home.name,
-                                market: storedGame.home.market,
-                                record: `${storedGame.home.win}-${storedGame.home.loss}`,
-                                runs: 0
-                            },
-                            awayTeam: {
-                                id: storedGame.away.id,
-                                name: storedGame.away.name,
-                                market: storedGame.away.market,
-                                record: `${storedGame.away.win}-${storedGame.away.loss}`,
-                                runs: 0
-                            },
-                            currentTime: new Date(storedGame.scheduled).toLocaleTimeString('en-US', {
-                                timeZone: storedGame.venue.time_zone,
-                                hour: 'numeric',
-                                minute: '2-digit',
-                                hour12: true
-                            }),
-                            status: storedGame.status,
-                            probablePitchers: null,
-                            weather: null,
-                            broadcasts: storedGame.broadcasts?.map((b: any) => b.network).join(', ') || null
-                        };
+                        const initialInfo = parseGameBoxscore(storedGame);
+                        console.log('[Render] Setting game info from Redis:', initialInfo);
                         setGameInfo(initialInfo);
                     }
                 }).catch(error => {
@@ -452,13 +388,19 @@ export function setupBaseballApp() {
                 // Initial fetch
                 fetchBoxScore(gameId);
                 
-                // Schedule periodic updates
-                const updateInterval = 30000; // 30 seconds
+                // Schedule periodic updates with rate limiting
+                const updateInterval = 60000; // 1 minute to avoid rate limits
+                let lastFetchTime = Date.now();
+                
                 const scheduleNextUpdate = () => {
                     setTimeout(() => {
                         if (gameId) {
-                            console.log('[Render] Fetching periodic update for game:', gameId);
-                            fetchBoxScore(gameId);
+                            const now = Date.now();
+                            if (now - lastFetchTime >= updateInterval) {
+                                console.log('[Render] Fetching periodic update for game:', gameId);
+                                lastFetchTime = now;
+                                fetchBoxScore(gameId);
+                            }
                             scheduleNextUpdate();
                         }
                     }, updateInterval);
