@@ -18,8 +18,7 @@ Devvit.addCustomPostType({
     const [submittedMonth, setSubmittedMonth] = useState<string | null>(null);
     const [submittedYear, setSubmittedYear] = useState<string | null>(null);
 
-
-    const fetchGameIDs = async (year: string, month:string, day:string) => {
+    const fetchGameIDs = async (year: string, month: string, day: string) => {
       const apiKey = 'lmTPYOsFUb8uRUQPe2ooVIWqjLpUldelM9wu5EuP';
       const accessLevel = 'trial';
       const languageCode = 'en';
@@ -39,7 +38,6 @@ Devvit.addCustomPostType({
         setGamesList(`Error: ${(err as Error).message}`);
       }
     };
-
 
     const fetchBoxScore = async (id: string) => {
       const apiKey = 'lmTPYOsFUb8uRUQPe2ooVIWqjLpUldelM9wu5EuP';
@@ -62,26 +60,27 @@ Devvit.addCustomPostType({
       }
     };
 
-    /*
     const gameForm = useForm(
       {
         fields: [
           {
             type: 'string',
-            name: 'name',
+            name: 'gameId',
             label: 'Enter Game ID',
+            placeholder: 'Enter game ID',
           },
         ],
       },
       async (values) => {
-        const id = values.name;
-        setGameId(id);
-        await fetchBoxScore(id);
+        if (values.gameId) {
+          setGameId(values.gameId);
+          await fetchBoxScore(values.gameId);
+          // Store gameId in Redis for the block render
+          await context.redis.set(`game_${context.postId}`, JSON.stringify({ id: values.gameId }));
+        }
       }
     );
-    */
     
-    // To enter date for games
     const dateForm = useForm(
       {
         fields: [
@@ -106,20 +105,24 @@ Devvit.addCustomPostType({
         ],
       },
       async (values) => {
-        setSubmittedDay(values.day);
-        setSubmittedMonth(values.month);
-        setSubmittedYear(values.year);
-        await fetchGameIDs(values.year, values.month, values.day);
+        if (values.day && values.month && values.year) {
+          setSubmittedDay(values.day);
+          setSubmittedMonth(values.month);
+          setSubmittedYear(values.year);
+          await fetchGameIDs(values.year, values.month, values.day);
+        }
       }
     );
 
-    // Given the date we want to retrieve a list of games
-
     return (
       <vstack gap="medium" height="100%" alignment="middle center">
-        <text>MLB Game ID: {gameId}</text>
+        <text>MLB Game Selection</text>
+        <button onPress={() => context.ui.showForm(dateForm)}>
+          Select Date
+        </button>
+        {gamesList && <text wrap>{gamesList}</text>}
         <button onPress={() => context.ui.showForm(gameForm)}>
-          Get Boxscore
+          Enter Game ID
         </button>
         {boxscore && <text wrap>{boxscore}</text>}
       </vstack>
