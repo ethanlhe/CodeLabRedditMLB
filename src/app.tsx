@@ -269,9 +269,26 @@ export function setupBaseballApp() {
                 broadcasts: null
             });
 
+            // Helper function to update game state
+            const updateGameState = (gameData: GameBoxscore) => {
+                const phase = gameData.status === 'scheduled' ? 'pre' : 
+                            gameData.status === 'in-progress' ? 'live' : 
+                            gameData.status === 'closed' ? 'post' : 'pre';
+                            
+                const parsedGameInfo = parseGameBoxscore(gameData);
+                const newScore = phase !== 'pre' ? {
+                    home: gameData.home.runs || 0,
+                    away: gameData.away.runs || 0
+                } : { home: 0, away: 0 };
+                
+                // Batch all state updates together
+                setGamePhase(phase);
+                setGameInfo(parsedGameInfo);
+                setScore(newScore);
+            };
+
             // Load game data from Redis when component mounts
             if (context.postId) {
-                // Use context.useState to ensure state updates are properly handled
                 context.useState(async () => {
                     try {
                         const storedGameStr = await context.redis.get(`game_${context.postId}`);
@@ -279,32 +296,14 @@ export function setupBaseballApp() {
                             const storedGame = JSON.parse(storedGameStr) as GameBoxscore;
                             console.log('[Render] Found game data in Redis:', storedGame);
                             
-                            // Set the game ID
                             setGameId(storedGame.id);
-                            
-                            // Parse and set the game info
-                            const initialInfo = parseGameBoxscore(storedGame);
-                            console.log('[Render] Setting game info from Redis:', initialInfo);
-                            setGameInfo(initialInfo);
-                            
-                            // Set the game phase
-                            const phase = storedGame.status === 'scheduled' ? 'pre' :
-                                        storedGame.status === 'in-progress' ? 'live' :
-                                        storedGame.status === 'closed' ? 'post' : 'pre';
-                            setGamePhase(phase);
-                            
-                            // Set the score if the game is live or closed
-                            if (phase !== 'pre') {
-                                setScore({
-                                    home: storedGame.home.runs || 0,
-                                    away: storedGame.away.runs || 0
-                                });
-                            }
+                            updateGameState(storedGame);
                         } else {
                             console.log('[Render] No game data found in Redis');
                         }
                     } catch (error) {
                         console.error('[Render] Error getting game data from Redis:', error);
+                        context.ui.showToast(`Error loading game data: ${(error as Error).message}`);
                     } finally {
                         setIsLoading(false);
                     }
@@ -323,64 +322,35 @@ export function setupBaseballApp() {
                     if (cachedData) {
                         const data = JSON.parse(cachedData);
                         console.log('[fetchBoxScore] Using cached data for game:', id);
-                        
-                        // Update game phase and info from cached data
-                        const phase = data.game.status === 'scheduled' ? 'pre' : 
-                                    data.game.status === 'in-progress' ? 'live' : 
-                                    data.game.status === 'closed' ? 'post' : 'pre';
-                        setGamePhase(phase);
-                        
-                        const parsedGameInfo = parseGameBoxscore(data.game);
-                        setGameInfo(parsedGameInfo);
-                        
-                        if (phase !== 'pre') {
-                            setScore({
-                                home: data.game.home.runs || 0,
-                                away: data.game.away.runs || 0
-                            });
-                        }
+                        updateGameState(data.game);
                         return;
                     }
 
                     console.log('[fetchBoxScore] Fetching boxscore for game:', id);
                     const response = await fetch(`https://api.sportradar.us/mlb/trial/v8/en/games/${id}/boxscore.json?api_key=${API_KEY}`);
+                    
                     if (!response.ok) {
-                        throw new Error('Failed to fetch boxscore');
+                        throw new Error(`API request failed with status ${response.status}`);
                     }
+                    
                     const data = await response.json();
-                    console.log('[fetchBoxScore] Received data:', data);
                     
                     // Cache the data in Redis
                     await context.redis.set(`boxscore_${id}`, JSON.stringify(data));
                     
-                    // Determine game phase based on status
-                    const phase = data.game.status === 'scheduled' ? 'pre' : 
-                                 data.game.status === 'in-progress' ? 'live' : 
-                                 data.game.status === 'closed' ? 'post' : 'pre';
-                    console.log('[fetchBoxScore] Setting game phase:', phase, 'for status:', data.game.status);
-                    setGamePhase(phase);
-
-                    // Parse and update game info
-                    const parsedGameInfo = parseGameBoxscore(data.game);
-                    console.log('[fetchBoxScore] Setting game info:', parsedGameInfo);
-                    setGameInfo(parsedGameInfo);
-
-                    // Store updated game data in Redis
-                    if (context.postId) {
-                        await context.redis.set(`game_${context.postId}`, JSON.stringify(data.game));
-                    }
-
-                    // Update scores for both live and closed games
-                    if (phase !== 'pre') {
-                        const newScore: Score = {
-                            home: data.game.home.runs || 0,
-                            away: data.game.away.runs || 0
-                        };
-                        console.log('[fetchBoxScore] Setting score:', newScore);
-                        setScore(newScore);
-                    }
+                    updateGameState(data.game);
+                    
                 } catch (error) {
                     console.error('[fetchBoxScore] Error:', error);
+                    // Show error to user
+                    context.ui.showToast(`Error updating game data: ${(error as Error).message}`);
+                    
+                    // If we have cached data, use it as fallback
+                    const cachedData = await context.redis.get(`boxscore_${id}`);
+                    if (cachedData) {
+                        const data = JSON.parse(cachedData);
+                        updateGameState(data.game);
+                    }
                 }
             };
 
@@ -393,7 +363,7 @@ export function setupBaseballApp() {
                 // Schedule periodic updates with rate limiting
                 const updateInterval = 60000; // 1 minute to avoid rate limits
                 let lastFetchTime = Date.now();
-                let updateTimer: NodeJS.Timeout | null = null;
+                let updateTimer: number | null = null;
                 
                 const scheduleNextUpdate = () => {
                     if (updateTimer) {
@@ -408,20 +378,15 @@ export function setupBaseballApp() {
                                 lastFetchTime = now;
                                 fetchBoxScore(gameId);
                             }
+                        }
+                        // Schedule next update only if we still have a valid gameId
+                        if (gameId) {
                             scheduleNextUpdate();
                         }
                     }, updateInterval);
                 };
                 
                 scheduleNextUpdate();
-                
-                // Cleanup timer on unmount
-                const cleanup = () => {
-                    if (updateTimer) {
-                        clearTimeout(updateTimer);
-                    }
-                };
-                cleanup();
             }
 
             if (isLoading) {
