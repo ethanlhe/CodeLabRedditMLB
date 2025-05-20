@@ -188,6 +188,31 @@ export function setupGameSelectionForm() {
                             // Store the game data in Redis before navigating
                             await gameContext.redis.set(`game_${post.id}`, JSON.stringify(selectedGame));
 
+                            // Fetch and store the initial boxscore data
+                            const boxscoreResponse = await fetch(
+                                `https://api.sportradar.us/mlb/trial/v8/en/games/${selectedGame.id}/boxscore.json`,
+                                {
+                                    headers: {
+                                        'accept': 'application/json',
+                                        'x-api-key': API_KEY
+                                    }
+                                }
+                            );
+
+                            if (boxscoreResponse.ok) {
+                                const boxscoreData = await boxscoreResponse.json();
+                                await gameContext.redis.set(`boxscore_${selectedGame.id}`, JSON.stringify(boxscoreData));
+                                await gameContext.redis.set(`boxscore_${selectedGame.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
+
+                                // Update the game data in Redis to reflect the live status from the boxscore
+                                if (boxscoreData && boxscoreData.game && boxscoreData.game.status) {
+                                    selectedGame.status = boxscoreData.game.status;
+                                    await gameContext.redis.set(`game_${post.id}`, JSON.stringify(selectedGame));
+                                }
+                            } else {
+                                console.error('Failed to fetch initial boxscore:', boxscoreResponse.status);
+                            }
+
                             // Navigate to the post
                             ui.navigateTo(post);
                         } catch (error) {
