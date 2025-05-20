@@ -1,8 +1,6 @@
 import { Devvit, useState, useForm } from '@devvit/public-api';
 import { GameBoxscore, GameInfo } from '../types/game.js';
 
-const API_KEY = '4cOVnRTFs8wHDprVJejGhuAlLSHqmQl7klxf9yiZ';
-
 function parseGameBoxscore(data: GameBoxscore): GameInfo {
   const gameTime = new Date(data.scheduled);
   const timezone = data.venue?.timezone || 'America/New_York';
@@ -72,6 +70,7 @@ export function setupGameSelectionForm() {
             ],
         },
         async (event, context) => {
+            const API_KEY = await context.settings.get('sportsradar-api-key');
             const { date } = event.values;
             const { ui } = context;
 
@@ -94,7 +93,7 @@ export function setupGameSelectionForm() {
                     {
                         headers: {
                             'accept': 'application/json',
-                            'x-api-key': API_KEY
+                            Authorization: `Bearer ${API_KEY}`,
                         }
                     }
                 );

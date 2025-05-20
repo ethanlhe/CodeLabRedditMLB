@@ -105,7 +105,7 @@ export function setupBaseballApp() {
                     // 3. Fetch fresh boxscore from API if cache is invalid
                     console.log('Fetching fresh boxscore data');
                     const response = await fetch(
-                        `https://api.sportradar.us/mlb/trial/v8/en/games/${gameId}/boxscore.json`,
+                        `https://api.sportradar.us/mlb/production/v8/en/games/${gameId}/boxscore.json`,
                         {
                             headers: {
                                 'accept': 'application/json',
