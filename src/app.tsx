@@ -1,4 +1,4 @@
-import { Devvit, useState } from '@devvit/public-api';
+import { Devvit, useState, useAsync } from '@devvit/public-api';
 import { renderPreGame } from './phases/pregame.tsx';
 import { renderInGame } from './phases/ingame.tsx';
 import { renderPostGame } from './phases/postgame.tsx';
@@ -7,7 +7,8 @@ import { Header } from './ui/components/Header.tsx';
 import { GamePhase, GameInfo, Score, GameBoxscore } from './types/game.ts';
 import { setupGameSelectionForm } from './forms/GameSelectionForm.tsx';
 
-const API_KEY = 'lmTPYOsFUb8uRUQPe2ooVIWqjLpUldelM9wu5EuP';
+const API_KEY = '4cOVnRTFs8wHDprVJejGhuAlLSHqmQl7klxf9yiZ';
+const CACHE_DURATION = 300; // Cache duration in seconds (5 minutes)
 
 // Global state to store the game data
 let currentGameData: GameBoxscore | null = null;
@@ -78,21 +79,9 @@ export function setupBaseballApp() {
         height: 'tall',
         render: (context) => {
             const [isLoading, setIsLoading] = useState(true);
-            const [gameInfo, setGameInfo] = useState<GameInfo>({
-                id: '',
-                league: 'MLB',
-                date: '',
-                location: '',
-                homeTeam: { id: '', name: '', market: '', record: '', runs: 0 },
-                awayTeam: { id: '', name: '', market: '', record: '', runs: 0 },
-                currentTime: '',
-                status: '',
-                probablePitchers: null,
-                weather: null,
-                broadcasts: null
-            });
 
-            context.useState(async () => {
+            // Use useAsync to fetch game data with caching
+            const { data: gameData, loading, error } = useAsync(async () => {
                 try {
                     // 1. Load gameId from Redis
                     const storedGameStr = await context.redis.get(`game_${context.postId}`);
@@ -100,43 +89,57 @@ export function setupBaseballApp() {
                     const storedGame = JSON.parse(storedGameStr);
                     const gameId = storedGame.id;
 
-                    // 2. Fetch boxscore from API (with cache fallback)
-                    let boxscoreData;
-                    try {
-                        const response = await fetch(
-                            `https://api.sportradar.com/mlb/trial/v8/en/games/${gameId}/boxscore.json?api_key=${API_KEY}`,
-                            {
-                                headers: {
-                                    'accept': 'application/json'
-                                }
-                            }
-                        );
+                    // 2. Check if we have a valid cached boxscore
+                    const cachedBoxscoreStr = await context.redis.get(`boxscore_${gameId}`);
+                    const cachedTimestampStr = await context.redis.get(`boxscore_${gameId}_timestamp`);
+                    
+                    const now = Math.floor(Date.now() / 1000);
+                    const cachedTimestamp = cachedTimestampStr ? parseInt(cachedTimestampStr) : 0;
+                    const isCacheValid = cachedBoxscoreStr && (now - cachedTimestamp < CACHE_DURATION);
 
-                        if (!response.ok) {
-                            if (response.status === 429) {
-                                throw new Error('API rate limit exceeded. Please try again in a few minutes.');
-                            }
-                            throw new Error(`Failed to fetch boxscore: ${response.status}`);
-                        }
-                        boxscoreData = await response.json();
-                        await context.redis.set(`boxscore_${gameId}`, JSON.stringify(boxscoreData));
-                    } catch {
-                        // fallback to cache
-                        const cached = await context.redis.get(`boxscore_${gameId}`);
-                        if (!cached) throw new Error('No boxscore data available');
-                        boxscoreData = JSON.parse(cached);
+                    if (isCacheValid) {
+                        console.log('Using cached boxscore data');
+                        return parseGameBoxscore(JSON.parse(cachedBoxscoreStr).game);
                     }
 
-                    // 3. Update state
-                    setGameInfo(parseGameBoxscore(boxscoreData.game));
+                    // 3. Fetch fresh boxscore from API if cache is invalid
+                    console.log('Fetching fresh boxscore data');
+                    const response = await fetch(
+                        `https://api.sportradar.us/mlb/trial/v8/en/games/${gameId}/boxscore.json`,
+                        {
+                            headers: {
+                                'accept': 'application/json',
+                                'x-api-key': API_KEY
+                            }
+                        }
+                    );
+
+                    if (!response.ok) {
+                        if (response.status === 429) {
+                            // If we hit rate limit, try to use cached data even if expired
+                            if (cachedBoxscoreStr) {
+                                console.log('Rate limit hit, using expired cache');
+                                return parseGameBoxscore(JSON.parse(cachedBoxscoreStr).game);
+                            }
+                            throw new Error('API rate limit exceeded. Please try again in a few minutes.');
+                        }
+                        throw new Error(`Failed to fetch boxscore: ${response.status}`);
+                    }
+
+                    const boxscoreData = await response.json();
+                    
+                    // Update Redis cache with fresh data and timestamp
+                    await context.redis.set(`boxscore_${gameId}`, JSON.stringify(boxscoreData));
+                    await context.redis.set(`boxscore_${gameId}_timestamp`, now.toString());
+                    
+                    return parseGameBoxscore(boxscoreData.game);
                 } catch (err) {
-                    context.ui.showToast('Failed to load game data');
-                } finally {
-                    setIsLoading(false);
+                    console.error('Error fetching game data:', err);
+                    throw err;
                 }
             });
 
-            if (isLoading) {
+            if (loading) {
                 return (
                     <vstack padding="medium" gap="medium" alignment="middle center">
                         <text size="large">Loading Baseball Scorecard...</text>
@@ -144,14 +147,31 @@ export function setupBaseballApp() {
                 );
             }
 
+            if (error) {
+                return (
+                    <vstack padding="medium" gap="medium" alignment="middle center">
+                        <text size="large" color="red">Error loading game data</text>
+                        <text>{error.message}</text>
+                    </vstack>
+                );
+            }
+
+            if (!gameData) {
+                return (
+                    <vstack padding="medium" gap="medium" alignment="middle center">
+                        <text size="large" color="red">No game data available</text>
+                    </vstack>
+                );
+            }
+
             // Determine phase
             let phaseComponent;
-            if (gameInfo.status === 'scheduled') {
-                phaseComponent = renderPreGame({ gameInfo });
-            } else if (gameInfo.status === 'in-progress') {
-                phaseComponent = renderInGame({ gameInfo });
+            if (gameData.status === 'scheduled') {
+                phaseComponent = renderPreGame({ gameInfo: gameData });
+            } else if (gameData.status === 'in-progress') {
+                phaseComponent = renderInGame({ gameInfo: gameData });
             } else {
-                phaseComponent = renderPostGame({ gameInfo });
+                phaseComponent = renderPostGame({ gameInfo: gameData });
             }
 
             return (

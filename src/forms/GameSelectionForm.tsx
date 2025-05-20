@@ -89,19 +89,19 @@ export function setupGameSelectionForm() {
                     data = JSON.parse(cachedData);
                 } else {
                     console.log('Fetching fresh schedule data');
-                    const response = await fetch(
+                const response = await fetch(
                         `https://api.sportradar.com/mlb/trial/v8/en/games/${year}/${month}/${day}/schedule.json`,
-                        {
-                            headers: {
-                                'accept': 'application/json',
-                                'x-api-key': API_KEY
-                            }
+                    {
+                        headers: {
+                            'accept': 'application/json',
+                            'x-api-key': API_KEY
                         }
-                    );
-
-                    if (!response.ok) {
-                        throw new Error(`Failed to fetch games: ${response.status}`);
                     }
+                );
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch games: ${response.status}`);
+                }
 
                     data = await response.json();
                     
