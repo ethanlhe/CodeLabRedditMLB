@@ -1,7 +1,7 @@
 import { Devvit, useState, useForm } from '@devvit/public-api';
 import { GameBoxscore, GameInfo } from '../types/game.js';
 
-const API_KEY = 'lmTPYOsFUb8uRUQPe2ooVIWqjLpUldelM9wu5EuP';
+const API_KEY = '4cOVnRTFs8wHDprVJejGhuAlLSHqmQl7klxf9yiZ';
 
 function parseGameBoxscore(data: GameBoxscore): GameInfo {
   const gameTime = new Date(data.scheduled);
@@ -76,21 +76,38 @@ export function setupGameSelectionForm() {
             const { ui } = context;
 
             try {
-                const response = await fetch(
-                    `https://api.sportradar.com/mlb/trial/v8/en/games/${date}/schedule.json`,
-                    {
-                        headers: {
-                            'accept': 'application/json',
-                            'x-api-key': API_KEY
+                // Parse the date into components
+                const [year, month, day] = date.split('/');
+                const cacheKey = `schedule_${year}_${month}_${day}`;
+
+                // Try to get cached data first
+                const cachedData = await context.redis.get(cacheKey);
+                let data;
+                
+                if (cachedData) {
+                    console.log('Using cached schedule data');
+                    data = JSON.parse(cachedData);
+                } else {
+                    console.log('Fetching fresh schedule data');
+                    const response = await fetch(
+                        `https://api.sportradar.com/mlb/trial/v8/en/games/${year}/${month}/${day}/schedule.json`,
+                        {
+                            headers: {
+                                'accept': 'application/json',
+                                'x-api-key': API_KEY
+                            }
                         }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch games: ${response.status}`);
                     }
-                );
 
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch games: ${response.status}`);
+                    data = await response.json();
+                    
+                    // Cache the data
+                    await context.redis.set(cacheKey, JSON.stringify(data));
                 }
-
-                const data = await response.json();
                 
                 if (!data.games || data.games.length === 0) {
                     ui.showToast('No games found for the selected date');
@@ -136,7 +153,25 @@ export function setupGameSelectionForm() {
                             }
 
                             // Initialize the game info with the selected game data
-                            const initialGameInfo = parseGameBoxscore(selectedGame);
+                            const initialGameInfo = parseGameBoxscore({
+                                ...selectedGame,
+                                status: 'scheduled',
+                                scheduled: new Date().toISOString(),
+                                venue: {
+                                    name: selectedGame.venue?.name || '',
+                                    timezone: selectedGame.venue?.time_zone || 'America/New_York'
+                                },
+                                home: {
+                                    ...selectedGame.home,
+                                    record: `${selectedGame.home.win}-${selectedGame.home.loss}`,
+                                    runs: 0
+                                },
+                                away: {
+                                    ...selectedGame.away,
+                                    record: `${selectedGame.away.win}-${selectedGame.away.loss}`,
+                                    runs: 0
+                                }
+                            });
                             
                             ui.showToast("Creating your baseball scorecard - you'll be navigated there upon completion.");
                         
@@ -151,19 +186,8 @@ export function setupGameSelectionForm() {
                                 ),
                             });
 
-                            // Store the complete game data
-                            // currentGameData = selectedGame;
-                            
-                            // Fetch the boxscore for the selected game
-                            const boxscoreResponse = await fetch(`https://api.sportradar.us/mlb/trial/v8/en/games/${actualGameId}/boxscore.json?api_key=${API_KEY}`);
-                            if (!boxscoreResponse.ok) {
-                                throw new Error(`Failed to fetch boxscore: ${boxscoreResponse.status}`);
-                            }
-                            const boxscoreData = await boxscoreResponse.json();
-                            const boxscoreGame = boxscoreData.game;
-                            
-                            // Store the boxscore game data in Redis before navigating
-                            await gameContext.redis.set(`game_${post.id}`, JSON.stringify(boxscoreGame));
+                            // Store the game data in Redis before navigating
+                            await gameContext.redis.set(`game_${post.id}`, JSON.stringify(selectedGame));
 
                             // Navigate to the post
                             ui.navigateTo(post);

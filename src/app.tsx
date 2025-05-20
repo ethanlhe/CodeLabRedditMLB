@@ -103,8 +103,21 @@ export function setupBaseballApp() {
                     // 2. Fetch boxscore from API (with cache fallback)
                     let boxscoreData;
                     try {
-                        const response = await fetch(`https://api.sportradar.us/mlb/trial/v8/en/games/${gameId}/boxscore.json?api_key=${API_KEY}`);
-                        if (!response.ok) throw new Error();
+                        const response = await fetch(
+                            `https://api.sportradar.com/mlb/trial/v8/en/games/${gameId}/boxscore.json?api_key=${API_KEY}`,
+                            {
+                                headers: {
+                                    'accept': 'application/json'
+                                }
+                            }
+                        );
+
+                        if (!response.ok) {
+                            if (response.status === 429) {
+                                throw new Error('API rate limit exceeded. Please try again in a few minutes.');
+                            }
+                            throw new Error(`Failed to fetch boxscore: ${response.status}`);
+                        }
                         boxscoreData = await response.json();
                         await context.redis.set(`boxscore_${gameId}`, JSON.stringify(boxscoreData));
                     } catch {
