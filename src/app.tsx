@@ -198,7 +198,7 @@ export function setupBaseballApp() {
             // Render the scoreboard UI
             const pollingStatus = Date.now() - lastUpdateTime < 35000;
             return (
-                <vstack padding="medium" gap="medium" backgroundColor="#F6F8F9" width="100%" minHeight="100%">
+                <vstack padding="medium" gap="medium" backgroundColor="neutral-background-weak" width="100%" minHeight="100%">
                     <Header gameInfo={displayGameData as GameInfo} phase={phase} />
                     {phaseComponent}
                 </vstack>

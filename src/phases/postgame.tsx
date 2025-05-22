@@ -28,12 +28,12 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
     : `${homeWon ? gameInfo.homeTeam.name : gameInfo.awayTeam.name} defeat ${homeWon ? gameInfo.awayTeam.name : gameInfo.homeTeam.name}`;
 
   return (
-    <vstack width="100%" maxWidth={600} backgroundColor="#F6F8F9" padding="large" gap="large">
+    <vstack width="100%" maxWidth={600} backgroundColor="neutral-background-weak" padding="large" gap="large">
       {/* Header Section */}
       <vstack width="100%" gap="small">
         <text size="large" weight="bold" alignment="center">{gameInfo.awayTeam.name} @ {gameInfo.homeTeam.name}</text>
-        <text size="small" color="#666" alignment="center">{gameInfo.date} • {gameInfo.currentTime}</text>
-        <text size="small" color="#888" alignment="center">{gameInfo.location}</text>
+        <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.date} • {gameInfo.currentTime}</text>
+        <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.location}</text>
       </vstack>
       {/* Score Row */}
       <hstack width="100%" alignment="center middle" gap="large" padding="small">
@@ -48,34 +48,34 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
             />
           ) : null}
           <text size="medium" weight="bold" alignment="center">{gameInfo.awayTeam.name}</text>
-          <text size="small" color="#888" alignment="center">{gameInfo.awayTeam.record}</text>
+          <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.awayTeam.record}</text>
         </vstack>
         {/* Score */}
         <vstack alignment="center middle" gap="small" minWidth={80}>
           <hstack alignment="center middle" gap="small">
             {awayWon ? (
-              <text size="xxlarge" weight="bold" color="#222" alignment="center">
+              <text size="xxlarge" weight="bold" color="neutral-content-strong" alignment="center">
                 {gameInfo.awayTeam.runs}
               </text>
             ) : (
-              <text size="xxlarge" color="#222" alignment="center">
+              <text size="xxlarge" color="neutral-content-strong" alignment="center">
                 {gameInfo.awayTeam.runs}
               </text>
             )}
-            <text size="xxlarge" color="#222" alignment="center">
+            <text size="xxlarge" color="neutral-content-strong" alignment="center">
               {" - "}
             </text>
             {homeWon ? (
-              <text size="xxlarge" weight="bold" color="#222" alignment="center">
+              <text size="xxlarge" weight="bold" color="neutral-content-strong" alignment="center">
                 {gameInfo.homeTeam.runs}
               </text>
             ) : (
-              <text size="xxlarge" color="#222" alignment="center">
+              <text size="xxlarge" color="neutral-content-strong" alignment="center">
                 {gameInfo.homeTeam.runs}
               </text>
             )}
           </hstack>
-          <text size="small" color="#888" alignment="center">Final</text>
+          <text size="small" color="neutral-content-strong" alignment="center">Final</text>
         </vstack>
         {/* Home Team */}
         <vstack alignment="center middle" gap="small">
@@ -88,7 +88,7 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
             />
           ) : null}
           <text size="medium" weight="bold" alignment="center">{gameInfo.homeTeam.name}</text>
-          <text size="small" color="#888" alignment="center">{gameInfo.homeTeam.record}</text>
+            <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.homeTeam.record}</text>
         </vstack>
       </hstack>
       {/* Summary Line and Details */}
@@ -99,12 +99,12 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
         {(gameInfo.weather && gameInfo.weather.condition && gameInfo.weather.temp) || gameInfo.broadcasts ? (
           <hstack width="100%" gap="medium" alignment="center middle">
             {gameInfo.weather && gameInfo.weather.condition && gameInfo.weather.temp ? (
-              <text size="small" color="#666" alignment="center">
+              <text size="small" color="neutral-content-strong" alignment="center">
                 Weather: {gameInfo.weather.condition}, {gameInfo.weather.temp}°F
               </text>
             ) : null}
             {gameInfo.broadcasts ? (
-              <text size="small" color="#666" alignment="center">
+              <text size="small" color="neutral-content-strong" alignment="center">
                 Broadcast: {gameInfo.broadcasts}
               </text>
             ) : null}

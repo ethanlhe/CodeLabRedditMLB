@@ -20,12 +20,12 @@ export function renderInGame({ gameInfo }: InGameProps) {
   const homeLogo = MLB_LOGOS[homeAbbr];
 
   return (
-    <vstack width="100%" maxWidth={600} backgroundColor="#F6F8F9" padding="large" gap="large">
+    <vstack width="100%" maxWidth={600} backgroundColor="neutral-background-weak" padding="large" gap="large">
       {/* Header Section */}
       <vstack width="100%" gap="small">
         <text size="large" weight="bold" alignment="center">{gameInfo.awayTeam.name} @ {gameInfo.homeTeam.name}</text>
-        <text size="small" color="#666" alignment="center">{gameInfo.date} • {gameInfo.currentTime}</text>
-        <text size="small" color="#888" alignment="center">{gameInfo.location}</text>
+        <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.date} • {gameInfo.currentTime}</text>
+        <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.location}</text>
       </vstack>
       {/* Score Row */}
       <hstack width="100%" alignment="center middle" gap="large" padding="xsmall">
@@ -40,7 +40,7 @@ export function renderInGame({ gameInfo }: InGameProps) {
             />
           ) : null}
           <text size="medium" weight="bold" alignment="center">{gameInfo.awayTeam.name}</text>
-          <text size="small" color="#888" alignment="center">{gameInfo.awayTeam.record}</text>
+          <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.awayTeam.record}</text>
         </vstack>
         {/* Score */}
         <vstack alignment="center middle" gap="small" minWidth={80}>
@@ -60,7 +60,7 @@ export function renderInGame({ gameInfo }: InGameProps) {
             />
           ) : null}
           <text size="medium" weight="bold" alignment="center">{gameInfo.homeTeam.name}</text>
-          <text size="small" color="#888" alignment="center">{gameInfo.homeTeam.record}</text>
+          <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.homeTeam.record}</text>
         </vstack>
       </hstack>
       {/* Live Details Section */}

@@ -13,7 +13,7 @@ export function Header({ gameInfo, phase }: HeaderProps) {
   const dateNoYear = gameInfo.date?.replace(/,? \d{4}$/, '') ?? '';
   return (
     <vstack width="100%" gap="none" padding="none">
-      <hstack width="100%" backgroundColor="#F6F8F9" alignment="start middle">
+      <hstack width="100%" backgroundColor="neutral-background-weak" alignment="start middle">
         <hstack gap="small" alignment="start middle">
           <text size="small">⚾</text>
           <text size="small" weight="bold">MLB {year}</text>
