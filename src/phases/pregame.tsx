@@ -27,7 +27,7 @@ export function renderPreGame({ gameInfo }: PreGameProps) {
         <text size="small" color="#888" alignment="center">{gameInfo.location}</text>
       </vstack>
       {/* Matchup Row */}
-      <hstack width="100%" alignment="center middle" gap="large" padding="none">
+      <hstack width="100%" alignment="center middle" gap="large" padding="xsmall">
         {/* Away Team */}
         <vstack alignment="center middle" gap="small">
           {awayLogo ? (

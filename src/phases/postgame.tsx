@@ -36,7 +36,7 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
         <text size="small" color="#888" alignment="center">{gameInfo.location}</text>
       </vstack>
       {/* Score Row */}
-      <hstack width="100%" alignment="center middle" gap="large" padding="none">
+      <hstack width="100%" alignment="center middle" gap="large" padding="small">
         {/* Away Team */}
         <vstack alignment="center middle" gap="small">
           {awayLogo ? (
@@ -52,9 +52,29 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
         </vstack>
         {/* Score */}
         <vstack alignment="center middle" gap="small" minWidth={80}>
-          <text size="xxlarge" weight="bold" color="#222" alignment="center">
-            {gameInfo.awayTeam.runs} - {gameInfo.homeTeam.runs}
-          </text>
+          <hstack alignment="center middle" gap="small">
+            {awayWon ? (
+              <text size="xxlarge" weight="bold" color="#222" alignment="center">
+                {gameInfo.awayTeam.runs}
+              </text>
+            ) : (
+              <text size="xxlarge" color="#222" alignment="center">
+                {gameInfo.awayTeam.runs}
+              </text>
+            )}
+            <text size="xxlarge" color="#222" alignment="center">
+              {" - "}
+            </text>
+            {homeWon ? (
+              <text size="xxlarge" weight="bold" color="#222" alignment="center">
+                {gameInfo.homeTeam.runs}
+              </text>
+            ) : (
+              <text size="xxlarge" color="#222" alignment="center">
+                {gameInfo.homeTeam.runs}
+              </text>
+            )}
+          </hstack>
           <text size="small" color="#888" alignment="center">Final</text>
         </vstack>
         {/* Home Team */}
