@@ -146,7 +146,7 @@ export function setupBaseballApp() {
             const [lastUpdateTime, setLastUpdateTime] = useState<number>(Date.now());
 
             // Use useAsync for initial data load
-            const { loading, error, data: asyncGameData } = useAsync(async () => {
+            const { loading, error, data: asyncGameData } = useAsync<GameInfo>(async () => {
                 try {
                     console.log('[Scoreboard] Loading game data for post:', context.postId);
                     const storedGameStr = await context.redis.get(`game_${context.postId}`);
@@ -174,28 +174,6 @@ export function setupBaseballApp() {
                     console.log('[Scoreboard] Setting game data:', parsedGameInfo);
                     setIsLive(isGameLive);
 
-                    // 3. Fetch fresh boxscore from API if cache is invalid
-                    console.log('Fetching fresh boxscore data');
-                    const response = await fetch(
-                        `https://api.sportradar.us/mlb/production/v8/en/games/${gameId}/boxscore.json`,
-                        {
-                            headers: {
-                                'accept': 'application/json',
-                                'x-api-key': API_KEY
-                            }
-                        }
-                    );
-
-                    if (!response.ok) {
-                        if (response.status === 429) {
-                            // If we hit rate limit, try to use cached data even if expired
-                            if (cachedBoxscoreStr) {
-                                console.log('Rate limit hit, using expired cache');
-                                return parseGameBoxscore(JSON.parse(cachedBoxscoreStr).game);
-                            }
-                            throw new Error('API rate limit exceeded. Please try again in a few minutes.');
-                        }
-                        throw new Error(`Failed to fetch boxscore: ${response.status}`);
                     // Add to active games if live
                     if (isGameLive) {
                         await context.redis.hset('active_games', storedGame.id);
@@ -264,20 +242,20 @@ export function setupBaseballApp() {
             let phaseComponent;
             if (displayGameData.status === 'scheduled') {
                 phase = 'pre';
-                phaseComponent = renderPreGame({ gameInfo: displayGameData });
+                phaseComponent = renderPreGame({ gameInfo: displayGameData as GameInfo });
             } else if (displayGameData.status === 'in-progress') {
                 phase = 'live';
-                phaseComponent = renderInGame({ gameInfo: displayGameData });
+                phaseComponent = renderInGame({ gameInfo: displayGameData as GameInfo });
             } else {
                 phase = 'post';
-                phaseComponent = renderPostGame({ gameInfo: displayGameData });
+                phaseComponent = renderPostGame({ gameInfo: displayGameData as GameInfo });
             }
 
             // Render the scoreboard UI
             const pollingStatus = Date.now() - lastUpdateTime < 35000;
             return (
                 <vstack padding="medium" gap="medium">
-                    <Header gameInfo={displayGameData} gamePhase={phase} pollingStatus={pollingStatus} lastUpdateTime={lastUpdateTime} />
+                    <Header gameInfo={displayGameData as GameInfo} gamePhase={phase} pollingStatus={pollingStatus} lastUpdateTime={lastUpdateTime} />
                     {phaseComponent}
                 </vstack>
             );

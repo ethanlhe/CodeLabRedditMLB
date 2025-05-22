@@ -71,12 +71,22 @@ export function setupGameSelectionForm() {
         },
         async (event, context) => {
             const API_KEY = await context.settings.get('sportsradar-api-key');
+            if (!API_KEY) {
+                throw new Error('SportsRadar API key not configured. Please set it in the app settings.');
+            }
+            
             const { date } = event.values;
             const { ui } = context;
 
             try {
                 // Parse the date into components
                 const [year, month, day] = date.split('/');
+                
+                // Validate date format
+                if (!year || !month || !day) {
+                    throw new Error('Invalid date format. Please use YYYY/MM/DD');
+                }
+                
                 const cacheKey = `schedule_${year}_${month}_${day}`;
 
                 // Try to get cached data first
@@ -88,21 +98,25 @@ export function setupGameSelectionForm() {
                     data = JSON.parse(cachedData);
                 } else {
                     console.log('Fetching fresh schedule data');
-                const response = await fetch(
-                        `https://api.sportradar.com/mlb/trial/v8/en/games/${year}/${month}/${day}/schedule.json`,
-                    {
-                        headers: {
-                            'accept': 'application/json',
-                            Authorization: `Bearer ${API_KEY}`,
+                    const response = await fetch(
+                        `https://api.sportradar.us/mlb/trial/v8/en/games/${year}/${month}/${day}/schedule.json`,
+                        {
+                            headers: {
+                                'accept': 'application/json',
+                                'x-api-key': API_KEY as string
+                            }
                         }
-                    }
-                );
+                    );
 
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch games: ${response.status}`);
-                }
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch games: ${response.status} - ${await response.text()}`);
+                    }
 
                     data = await response.json();
+                    
+                    if (!data || !data.games) {
+                        throw new Error('Invalid response format from API');
+                    }
                     
                     // Cache the data
                     await context.redis.set(cacheKey, JSON.stringify(data));
@@ -194,7 +208,7 @@ export function setupGameSelectionForm() {
                                 {
                                     headers: {
                                         'accept': 'application/json',
-                                        'x-api-key': API_KEY
+                                        'x-api-key': API_KEY as string
                                     }
                                 }
                             );
@@ -208,9 +222,16 @@ export function setupGameSelectionForm() {
                                 if (boxscoreData && boxscoreData.game && boxscoreData.game.status) {
                                     selectedGame.status = boxscoreData.game.status;
                                     await gameContext.redis.set(`game_${post.id}`, JSON.stringify(selectedGame));
+                                    
+                                    // Add to active games if live
+                                    if (boxscoreData.game.status === 'in-progress') {
+                                        await gameContext.redis.hset('active_games', selectedGame.id);
+                                    }
                                 }
                             } else {
                                 console.error('Failed to fetch initial boxscore:', boxscoreResponse.status);
+                                // Still store the initial game data even if boxscore fetch fails
+                                await gameContext.redis.set(`game_${post.id}`, JSON.stringify(selectedGame));
                             }
 
                             // Navigate to the post
