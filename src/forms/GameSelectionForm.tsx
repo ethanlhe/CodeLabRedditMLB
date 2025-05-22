@@ -29,6 +29,7 @@ export function parseGameBoxscore(data: GameBoxscore): GameInfo {
       id: data.home.id,
       name: data.home.name,
       market: data.home.market,
+      abbreviation: data.home.abbr,
       record: `${data.home.win || 0}-${data.home.loss || 0}`,
       runs: data.home.runs || 0
     },
@@ -36,6 +37,7 @@ export function parseGameBoxscore(data: GameBoxscore): GameInfo {
       id: data.away.id,
       name: data.away.name,
       market: data.away.market,
+      abbreviation: data.away.abbr,
       record: `${data.away.win || 0}-${data.away.loss || 0}`,
       runs: data.away.runs || 0
     },
