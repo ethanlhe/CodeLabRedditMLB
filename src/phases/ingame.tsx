@@ -23,7 +23,7 @@ export function renderInGame({ gameInfo }: InGameProps) {
     <vstack width="100%" maxWidth={600} backgroundColor="neutral-background-weak" padding="large" gap="large">
       {/* Header Section */}
       <vstack width="100%" gap="small">
-        <text size="large" weight="bold" alignment="center">{gameInfo.awayTeam.name} @ {gameInfo.homeTeam.name}</text>
+        <text size="large" weight="bold" alignment="center" color="neutral-content-strong">{gameInfo.awayTeam.name} @ {gameInfo.homeTeam.name}</text>
         <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.date} • {gameInfo.currentTime}</text>
         <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.location}</text>
       </vstack>
@@ -39,7 +39,7 @@ export function renderInGame({ gameInfo }: InGameProps) {
               description={`${gameInfo.awayTeam.name} logo`} 
             />
           ) : null}
-          <text size="medium" weight="bold" alignment="center">{gameInfo.awayTeam.name}</text>
+          <text size="medium" weight="bold" alignment="center" color="neutral-content-strong">{gameInfo.awayTeam.name}</text>
           <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.awayTeam.record}</text>
         </vstack>
         {/* Score */}
@@ -59,7 +59,7 @@ export function renderInGame({ gameInfo }: InGameProps) {
               description={`${gameInfo.homeTeam.name} logo`} 
             />
           ) : null}
-          <text size="medium" weight="bold" alignment="center">{gameInfo.homeTeam.name}</text>
+          <text size="medium" weight="bold" alignment="center" color="neutral-content-strong">{gameInfo.homeTeam.name}</text>
           <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.homeTeam.record}</text>
         </vstack>
       </hstack>

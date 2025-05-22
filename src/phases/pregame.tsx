@@ -22,7 +22,7 @@ export function renderPreGame({ gameInfo }: PreGameProps) {
     <vstack width="100%" maxWidth={600} backgroundColor="neutral-background-weak" padding="large" gap="large">
       {/* Header Section */}
       <vstack width="100%" gap="small">
-        <text size="large" weight="bold" alignment="center">{gameInfo.awayTeam.name} @ {gameInfo.homeTeam.name}</text>
+        <text size="large" weight="bold" alignment="center" color="neutral-content-strong">{gameInfo.awayTeam.name} @ {gameInfo.homeTeam.name}</text>
         <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.date} • {gameInfo.currentTime}</text>
         <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.location}</text>
       </vstack>
@@ -38,7 +38,7 @@ export function renderPreGame({ gameInfo }: PreGameProps) {
               description={`${gameInfo.awayTeam.name} logo`} 
             />
           ) : null}
-          <text size="medium" weight="bold" alignment="center">{gameInfo.awayTeam.name}</text>
+          <text size="medium" weight="bold" alignment="center" color="neutral-content-strong">{gameInfo.awayTeam.name}</text>
           <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.awayTeam.record}</text>
         </vstack>
         {/* VS */}
@@ -56,13 +56,13 @@ export function renderPreGame({ gameInfo }: PreGameProps) {
               description={`${gameInfo.homeTeam.name} logo`} 
             />
           ) : null}
-          <text size="medium" weight="bold" alignment="center">{gameInfo.homeTeam.name}</text>
+          <text size="medium" weight="bold" alignment="center" color="neutral-content-strong" >{gameInfo.homeTeam.name}</text>
           <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.homeTeam.record}</text>
         </vstack>
       </hstack>
       {/* Details Section */}
       <vstack width="100%" gap="small">
-        <text size="medium" color="#1a7f37" weight="bold" alignment="center">
+        <text size="medium" color="success-plain" weight="bold" alignment="center">
           Scheduled: {gameInfo.date} at {gameInfo.currentTime}
         </text>
         {(gameInfo.weather && gameInfo.weather.condition && gameInfo.weather.temp) || gameInfo.broadcasts ? (
