@@ -1,39 +1,26 @@
 import { Devvit } from '@devvit/public-api';
-import { GameInfo, GamePhase } from '../../types/game.ts';
+import { GameInfo } from '../../types/game.ts';
 
 interface HeaderProps {
   gameInfo: GameInfo;
-  gamePhase: GamePhase;
-  pollingStatus?: boolean;
-  lastUpdateTime?: number;
 }
 
-export function Header({ gameInfo, gamePhase, pollingStatus, lastUpdateTime }: HeaderProps) {
+export function Header({ gameInfo }: HeaderProps) {
+  // Extract year from date string (e.g., "Thursday, May 22, 2025")
+  const year = gameInfo.date?.split(', ').pop()?.split(' ').pop() ?? '';
+  // Remove year from date for display
+  const dateNoYear = gameInfo.date?.replace(/,? \d{4}$/, '') ?? '';
   return (
-    <vstack width="100%" padding="medium" backgroundColor="#f6f7f8" cornerRadius="medium">
-      {gamePhase === 'live' && (
-        <hstack alignment="middle center" padding="small" backgroundColor="red" cornerRadius="small" width="100%" gap="small">
-          <text color="white" weight="bold" size="large">LIVE</text>
-          {typeof pollingStatus !== 'undefined' && typeof lastUpdateTime !== 'undefined' && (
-            <hstack alignment="middle center" gap="small">
-              <vstack 
-                width="8px" 
-                height="8px" 
-                backgroundColor={pollingStatus ? "green" : "gray"} 
-                cornerRadius="full"
-              />
-              <text size="small" color={pollingStatus ? "green" : "gray"}>
-                {pollingStatus ? "Live Updates Active" : "Waiting for Updates"}
-              </text>
-            </hstack>
-          )}
+    <vstack width="100%" gap="none" padding="none">
+      <hstack width="100%" backgroundColor="#F6F8F9" alignment="start middle">
+        <hstack gap="small" alignment="start middle">
+          <text size="medium">⚾</text>
+          <text size="medium" weight="bold">MLB {year}</text>
         </hstack>
-      )}
-      <hstack gap="small" alignment="center middle">
-        <text size="large" weight="bold">{gameInfo.awayTeam.name} @ {gameInfo.homeTeam.name}</text>
       </hstack>
-      <text>{gameInfo.date} - {gameInfo.currentTime}</text>
-      <text>{gameInfo.location}</text>
+      <text size="small" color="#888" alignment="start">
+        {dateNoYear} • {gameInfo.location}
+      </text>
     </vstack>
   );
-} 
+}
