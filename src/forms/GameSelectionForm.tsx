@@ -1,7 +1,7 @@
 import { Devvit, useState, useForm } from '@devvit/public-api';
 import { GameBoxscore, GameInfo } from '../types/game.js';
 
-function parseGameBoxscore(data: GameBoxscore): GameInfo {
+export function parseGameBoxscore(data: GameBoxscore): GameInfo {
   const gameTime = new Date(data.scheduled);
   const timezone = data.venue?.timezone || 'America/New_York';
   const formattedTime = gameTime.toLocaleTimeString('en-US', {
@@ -10,6 +10,10 @@ function parseGameBoxscore(data: GameBoxscore): GameInfo {
     minute: '2-digit',
     hour12: true
   });
+
+  // Normalize status for live games
+  let status = data.status;
+  if (status === 'inprogress' || status === 'in_progress' || status === 'live') status = 'in-progress';
 
   return {
     id: data.id,
@@ -36,7 +40,7 @@ function parseGameBoxscore(data: GameBoxscore): GameInfo {
       runs: data.away.runs || 0
     },
     currentTime: formattedTime,
-    status: data.status,
+    status,
     probablePitchers: data.probable_pitchers ? {
       home: data.probable_pitchers.home?.full_name || null,
       away: data.probable_pitchers.away?.full_name || null
@@ -165,27 +169,6 @@ export function setupGameSelectionForm() {
                                 throw new Error(`Selected game not found. Game ID: ${actualGameId}`);
                             }
 
-                            // Initialize the game info with the selected game data
-                            const initialGameInfo = parseGameBoxscore({
-                                ...selectedGame,
-                                status: 'scheduled',
-                                scheduled: new Date().toISOString(),
-                                venue: {
-                                    name: selectedGame.venue?.name || '',
-                                    timezone: selectedGame.venue?.time_zone || 'America/New_York'
-                                },
-                                home: {
-                                    ...selectedGame.home,
-                                    record: `${selectedGame.home.win}-${selectedGame.home.loss}`,
-                                    runs: 0
-                                },
-                                away: {
-                                    ...selectedGame.away,
-                                    record: `${selectedGame.away.win}-${selectedGame.away.loss}`,
-                                    runs: 0
-                                }
-                            });
-                            
                             ui.showToast("Creating your baseball scorecard - you'll be navigated there upon completion.");
                         
                             const subreddit = await reddit.getCurrentSubreddit();
@@ -232,6 +215,7 @@ export function setupGameSelectionForm() {
                                 console.error('Failed to fetch initial boxscore:', boxscoreResponse.status);
                                 // Still store the initial game data even if boxscore fetch fails
                                 await gameContext.redis.set(`game_${post.id}`, JSON.stringify(selectedGame));
+                                ui.showToast('Created scorecard with initial game data. Live updates may be delayed.');
                             }
 
                             // Navigate to the post
@@ -253,7 +237,7 @@ export function setupGameSelectionForm() {
 
     // Add a menu item to the subreddit menu for instantiating the new experience post
     Devvit.addMenuItem({
-        label: 'Add Baseball Scorecard-ehe',
+        label: 'Add Baseball Scorecard-testing',
         location: 'subreddit',
         forUserType: 'moderator',
         onPress: (_event, context) => {

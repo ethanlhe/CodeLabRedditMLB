@@ -5,69 +5,7 @@ import { renderPostGame } from './phases/postgame.tsx';
 import { GameStateControls } from './ui/components/GameControls.tsx';
 import { Header } from './ui/components/Header.tsx';
 import { GamePhase, GameInfo, Score, GameBoxscore } from './types/game.ts';
-import { setupGameSelectionForm } from './forms/GameSelectionForm.tsx';
-
-const API_KEY = '4cOVnRTFs8wHDprVJejGhuAlLSHqmQl7klxf9yiZ';
-const LIVE_CACHE_DURATION = 30; // 30 seconds for live games
-const NON_LIVE_CACHE_DURATION = 300; // 5 minutes for non-live games
-
-// Global state to store the game data
-let currentGameData: GameBoxscore | null = null;
-
-function parseGameBoxscore(data: GameBoxscore): GameInfo {
-  console.log('[parseGameBoxscore] input:', JSON.stringify(data, null, 2));
-  const gameTime = new Date(data.scheduled);
-  const timezone = data.venue?.timezone || 'America/New_York';
-  const formattedTime = gameTime.toLocaleTimeString('en-US', {
-    timeZone: timezone,
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  });
-
-  // Normalize status for live games
-  let status = data.status;
-  if (status === 'inprogress' || status === 'in_progress' || status === 'live') status = 'in-progress';
-
-  const result = {
-    id: data.id,
-    league: 'MLB',
-    date: gameTime.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    }),
-    location: data.venue?.name || '',
-    homeTeam: {
-      id: data.home.id,
-      name: data.home.name,
-      market: data.home.market,
-      record: `${data.home.win || 0}-${data.home.loss || 0}`,
-      runs: data.home.runs || 0
-    },
-    awayTeam: {
-      id: data.away.id,
-      name: data.away.name,
-      market: data.away.market,
-      record: `${data.away.win || 0}-${data.away.loss || 0}`,
-      runs: data.away.runs || 0
-    },
-    currentTime: formattedTime,
-    status,
-    probablePitchers: data.probable_pitchers ? {
-      home: data.probable_pitchers.home?.full_name || null,
-      away: data.probable_pitchers.away?.full_name || null
-    } : null,
-    weather: data.weather ? {
-      condition: data.weather.condition,
-      temp: data.weather.temp
-    } : null,
-    broadcasts: data.broadcasts?.map(b => b.network).join(', ') || null
-  };
-  console.log('[parseGameBoxscore] output:', JSON.stringify(result, null, 2));
-  return result;
-}
+import { setupGameSelectionForm, parseGameBoxscore } from './forms/GameSelectionForm.tsx';
 
 export function setupBaseballApp() {
     Devvit.configure({
@@ -98,12 +36,18 @@ export function setupBaseballApp() {
                         const parsedData = JSON.parse(boxscoreData);
                         if (parsedData.game.status === 'in-progress') {
                             // Fetch fresh data for live games
+                            const API_KEY = await context.settings.get('sportsradar-api-key');
+                            if (!API_KEY) {
+                                console.error('SportsRadar API key not configured');
+                                continue;
+                            }
+
                             const response = await fetch(
                                 `https://api.sportradar.us/mlb/trial/v8/en/games/${game.id}/boxscore.json`,
                                 {
                                     headers: {
                                         'accept': 'application/json',
-                                        'x-api-key': API_KEY
+                                        'x-api-key': API_KEY as string
                                     }
                                 }
                             );
