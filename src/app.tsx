@@ -182,12 +182,55 @@ export function setupBaseballApp() {
                 );
             }
 
+            async function voteForTeam(team: string) {
+                const currentUser = await context.reddit.getCurrentUser();
+                const userId = currentUser?.id;
+                const userKey = `poll:${team}:user:${userId}`;
+                const hasVoted = await context.redis.get(userKey);
+                if (!hasVoted) {
+                    await context.redis.set(userKey, '1');
+                    const txn = await context.redis.watch(`poll:${team}`);
+                    await txn.multi();
+                    await txn.incrBy(`poll:${team}`, 1); // Increment the selected team's votes
+                    await txn.exec();
+                }
+
+            }
+
+            async function getPollResults(homeTeam: string, awayTeam: string) {
+                const [home, away] = await context.redis.mGet([`poll:${homeTeam}`, `poll:${awayTeam}`]);
+                const homeVotes = parseInt(home ?? '0', 10);
+                const awayVotes = parseInt(away ?? '0', 10);
+                const total = homeVotes + awayVotes;
+                return {
+                    home: homeVotes,
+                    away: awayVotes,
+                    total,
+                    homePct: total ? Math.round((homeVotes / total) * 100) : 0,
+                    awayPct: total ? Math.round((awayVotes / total) * 100) : 0,
+                };
+            }
+
             // Determine phase and render appropriate component
             let phase: GamePhase;
             let phaseComponent;
             if (displayGameData.status === 'scheduled') {
                 phase = 'pre';
-                phaseComponent = renderPreGame({ gameInfo: displayGameData as GameInfo });
+                const { data: homePlayers } = useAsync(async () => {
+                    const playersStr = await context.redis.get(`players_home_${context.postId}`);
+                    return playersStr ? JSON.parse(playersStr) : [];
+                },);
+                const { data: awayPlayers } = useAsync(async () => {
+                    const playersStr2 = await context.redis.get(`players_away_${context.postId}`);
+                    return playersStr2 ? JSON.parse(playersStr2) : [];
+                },);
+                phaseComponent = renderPreGame({
+                    gameInfo: displayGameData as GameInfo,
+                    voteForTeam,
+                    getPollResults,
+                    homePlayers,
+                    awayPlayers,
+                });
             } else if (displayGameData.status === 'in-progress') {
                 phase = 'live';
                 phaseComponent = renderInGame({ gameInfo: displayGameData as GameInfo });

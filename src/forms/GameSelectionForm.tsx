@@ -188,6 +188,9 @@ export function setupGameSelectionForm() {
 
                             // Store the game data in our global state
                             const selectedGame = data.games.find((game: any) => game.id === actualGameId);
+                            const homeTeam = selectedGame.home_team;
+                            const awayTeam = selectedGame.away_team;
+                            //console.log("selectedGame", selectedGame);
 
                             if (!selectedGame) {
                                 throw new Error(`Selected game not found. Game ID: ${actualGameId}`);
@@ -241,6 +244,34 @@ export function setupGameSelectionForm() {
                                 await gameContext.redis.set(`game_${post.id}`, JSON.stringify(selectedGame));
                                 ui.showToast('Created scorecard with initial game data. Live updates may be delayed.');
                             }
+
+                            const homeTeamInfoResponse = await fetch(
+                                `https://api.sportradar.us/mlb/trial/v8/en/teams/${homeTeam}/profile.json`,
+                                {
+                                    headers: {
+                                        'accept': 'application/json',
+                                        'x-api-key': API_KEY as string
+                                    }
+                                }
+                            );
+                            const homeTeamInfo = await homeTeamInfoResponse.json();
+
+                            // Save just the players array to Redis, using the post id as part of the key
+                            await gameContext.redis.set(`players_home_${post.id}`, JSON.stringify(homeTeamInfo.players));
+
+                            const awayTeamInfoResponse = await fetch(
+                                `https://api.sportradar.us/mlb/trial/v8/en/teams/${awayTeam}/profile.json`,
+                                {
+                                    headers: {
+                                        'accept': 'application/json',
+                                        'x-api-key': API_KEY as string
+                                    }
+                                }
+                            );
+                            const awayTeamInfo = await awayTeamInfoResponse.json();
+
+                            // Save just the players array to Redis, using the post id as part of the key
+                            await gameContext.redis.set(`players_away_${post.id}`, JSON.stringify(awayTeamInfo.players));
 
                             // Navigate to the post
                             ui.navigateTo(post);

@@ -16,6 +16,12 @@ export interface ProbablePitchers {
   [key: string]: string | null;
 }
 
+export interface Player {
+  firstName: string;
+  lastName: string;
+  primaryPosition: string;
+  [key: string]: string;
+}
 
 export interface GameInfo {
   id: string;
