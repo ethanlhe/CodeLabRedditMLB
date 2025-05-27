@@ -7,6 +7,7 @@ import { Header } from './ui/components/Header.tsx';
 import { GamePhase, GameInfo, Score, GameBoxscore } from './types/game.ts';
 import { setupGameSelectionForm, parseGameBoxscore } from './forms/GameSelectionForm.tsx';
 
+
 export function setupBaseballApp() {
     Devvit.configure({
         redditAPI: true,
@@ -24,14 +25,14 @@ export function setupBaseballApp() {
             try {
                 // Get all active game posts from Redis
                 const activeGames = await context.redis.hkeys('active_games');
-                
+
                 for (const gameId of activeGames) {
                     const gameData = await context.redis.get(`game_${gameId}`);
                     if (!gameData) continue;
 
                     const game = JSON.parse(gameData);
                     const boxscoreData = await context.redis.get(`boxscore_${game.id}`);
-                    
+
                     if (boxscoreData) {
                         const parsedData = JSON.parse(boxscoreData);
                         if (parsedData.game.status === 'in-progress') {
@@ -56,7 +57,7 @@ export function setupBaseballApp() {
                                 const newData = await response.json();
                                 await context.redis.set(`boxscore_${game.id}`, JSON.stringify(newData));
                                 await context.redis.set(`boxscore_${game.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
-                                
+
                                 // Broadcast update to all clients
                                 context.realtime.send(`game_updates_${game.id}`, newData);
                             }
@@ -79,7 +80,7 @@ export function setupBaseballApp() {
             });
         }
     });
-      
+
     Devvit.addCustomPostType({
         name: 'Baseball Scorecard',
         height: 'tall',
@@ -98,23 +99,23 @@ export function setupBaseballApp() {
                         console.error('[Scoreboard] No game data found in Redis for post:', context.postId);
                         throw new Error('No game data found in Redis');
                     }
-                    
+
                     const storedGame = JSON.parse(storedGameStr);
                     console.log('[Scoreboard] Found stored game:', storedGame);
                     setGameId(storedGame.id);
-                    
+
                     const boxscoreData = await context.redis.get(`boxscore_${storedGame.id}`);
                     if (!boxscoreData) {
                         console.error('[Scoreboard] No boxscore data found for game:', storedGame.id);
                         throw new Error('No boxscore data available');
                     }
-                    
+
                     const parsedData = JSON.parse(boxscoreData);
                     console.log('[Scoreboard] Parsed boxscore data:', parsedData);
-                    
+
                     const isGameLive = parsedData.game.status === 'in-progress';
                     const parsedGameInfo = parseGameBoxscore(parsedData.game);
-                    
+
                     console.log('[Scoreboard] Setting game data:', parsedGameInfo);
                     setIsLive(isGameLive);
 
@@ -122,7 +123,7 @@ export function setupBaseballApp() {
                     if (isGameLive) {
                         await context.redis.hset('active_games', storedGame.id);
                     }
-                    
+
                     return parsedGameInfo;
                 } catch (err) {
                     console.error('[Scoreboard] Error loading initial game data:', err);
@@ -198,7 +199,7 @@ export function setupBaseballApp() {
             // Render the scoreboard UI
             const pollingStatus = Date.now() - lastUpdateTime < 35000;
             return (
-                <vstack padding="medium" gap="medium" backgroundColor="neutral-background-weak" width="100%" minHeight="100%">
+                <vstack padding="medium" gap="medium" backgroundColor="#F9FAFA" width="100%" minHeight="100%">
                     <Header gameInfo={displayGameData as GameInfo} phase={phase} />
                     {phaseComponent}
                 </vstack>

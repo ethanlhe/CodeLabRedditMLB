@@ -16,11 +16,6 @@ export interface ProbablePitchers {
   [key: string]: string | null;
 }
 
-export interface WeatherInfo {
-  condition: string;
-  temp: number;
-  [key: string]: string | number;
-}
 
 export interface GameInfo {
   id: string;
@@ -30,11 +25,10 @@ export interface GameInfo {
   homeTeam: TeamInfo;
   awayTeam: TeamInfo;
   currentTime: string;
+  timezone: string;
   status: string;
   probablePitchers: ProbablePitchers | null;
-  weather: WeatherInfo | null;
-  broadcasts: string | null;
-  [key: string]: string | TeamInfo | ProbablePitchers | WeatherInfo | null;
+  [key: string]: string | TeamInfo | ProbablePitchers | null;
 }
 
 export interface Score {
@@ -59,11 +53,4 @@ export interface GameBoxscore {
     away?: { full_name: string };
     [key: string]: { full_name: string } | undefined;
   };
-  weather?: {
-    condition: string;
-    temp: number;
-    [key: string]: string | number;
-  };
-  broadcasts?: Array<{ network: string; [key: string]: string }>;
-  [key: string]: any;
 }
