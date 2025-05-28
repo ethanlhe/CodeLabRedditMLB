@@ -2,6 +2,15 @@ import { Devvit } from '@devvit/public-api';
 import { MLB_LOGOS } from '../assets/logos/mlb.ts';
 import { GameInfo } from '../types/game.ts';
 
+/*
+  This is the in-game phase.
+  It displays the current score and the inning.
+  It also displays the current outs and runners on base.
+  It also displays the current pitcher for each team.
+  It also displays the current batter for each team.
+  It also displays the current pitch count for each pitcher.
+*/
+
 interface InGameProps {
   gameInfo: GameInfo;
 }

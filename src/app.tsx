@@ -94,21 +94,65 @@ export function setupBaseballApp() {
                 try {
                     console.log('[Scoreboard] Loading game data for post:', context.postId);
                     const storedGameStr = await context.redis.get(`game_${context.postId}`);
+                    let storedGame;
+                    let boxscoreData;
+                    let needsUpdate = false;
+
                     if (!storedGameStr) {
-                        console.error('[Scoreboard] No game data found in Redis for post:', context.postId);
-                        throw new Error('No game data found in Redis');
+                        console.log('[Scoreboard] No game data in Redis, fetching from API...');
+                        needsUpdate = true;
+                    } else {
+                        storedGame = JSON.parse(storedGameStr);
+                        boxscoreData = await context.redis.get(`boxscore_${storedGame.id}`);
+                        
+                        // Check if boxscore data is stale (older than 5 minutes)
+                        const timestamp = await context.redis.get(`boxscore_${storedGame.id}_timestamp`);
+                        if (!timestamp || (Date.now() / 1000 - parseInt(timestamp)) > 300) {
+                            console.log('[Scoreboard] Boxscore data is stale, fetching fresh data...');
+                            needsUpdate = true;
+                        }
                     }
-                    
-                    const storedGame = JSON.parse(storedGameStr);
-                    console.log('[Scoreboard] Found stored game:', storedGame);
-                    setGameId(storedGame.id);
-                    
-                    const boxscoreData = await context.redis.get(`boxscore_${storedGame.id}`);
+
+                    if (needsUpdate) {
+                        const API_KEY = await context.settings.get('sportsradar-api-key');
+                        if (!API_KEY) {
+                            throw new Error('SportsRadar API key not configured');
+                        }
+
+                        // If we don't have stored game data, we can't proceed
+                        if (!storedGame) {
+                            throw new Error('No game data available for this post');
+                        }
+
+                        // Fetch fresh data from API
+                        const response = await fetch(
+                            `https://api.sportradar.us/mlb/trial/v8/en/games/${storedGame.id}/boxscore.json`,
+                            {
+                                headers: {
+                                    'accept': 'application/json',
+                                    'x-api-key': API_KEY as string
+                                }
+                            }
+                        );
+
+                        if (!response.ok) {
+                            throw new Error(`API request failed: ${response.statusText}`);
+                        }
+
+                        const newData = await response.json();
+                        
+                        // Update Redis with fresh data
+                        await context.redis.set(`game_${context.postId}`, JSON.stringify(storedGame));
+                        await context.redis.set(`boxscore_${storedGame.id}`, JSON.stringify(newData));
+                        await context.redis.set(`boxscore_${storedGame.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
+                        
+                        boxscoreData = JSON.stringify(newData);
+                    }
+
                     if (!boxscoreData) {
-                        console.error('[Scoreboard] No boxscore data found for game:', storedGame.id);
                         throw new Error('No boxscore data available');
                     }
-                    
+
                     const parsedData = JSON.parse(boxscoreData);
                     console.log('[Scoreboard] Parsed boxscore data:', parsedData);
                     
@@ -125,7 +169,7 @@ export function setupBaseballApp() {
                     
                     return parsedGameInfo;
                 } catch (err) {
-                    console.error('[Scoreboard] Error loading initial game data:', err);
+                    console.error('[Scoreboard] Error loading game data:', err);
                     throw err;
                 }
             });
@@ -183,24 +227,130 @@ export function setupBaseballApp() {
 
             // Determine phase and render appropriate component
             let phase: GamePhase;
-            let phaseComponent;
             if (displayGameData.status === 'scheduled') {
                 phase = 'pre';
-                phaseComponent = renderPreGame({ gameInfo: displayGameData as GameInfo });
             } else if (displayGameData.status === 'in-progress') {
                 phase = 'live';
-                phaseComponent = renderInGame({ gameInfo: displayGameData as GameInfo });
             } else {
                 phase = 'post';
-                phaseComponent = renderPostGame({ gameInfo: displayGameData as GameInfo });
             }
 
-            // Render the scoreboard UI
-            const pollingStatus = Date.now() - lastUpdateTime < 35000;
+            // Dynamic tabs based on phase
+            let tabs: { key: string; label: string }[] = [];
+            if (phase === 'pre') {
+                tabs = [
+                    { key: 'summary', label: 'Summary' },
+                    { key: 'lineups', label: 'Lineups' }
+                ];
+            } else if (phase === 'live') {
+                tabs = [
+                    { key: 'summary', label: 'Summary' },
+                    { key: 'allplays', label: 'All Plays' },
+                    { key: 'boxscore', label: 'Box Score' }
+                ];
+            } else if (phase === 'post') {
+                tabs = [
+                    { key: 'summary', label: 'Summary' },
+                    { key: 'playbyplay', label: 'Play by Play' },
+                    { key: 'boxscore', label: 'Box Score' }
+                ];
+            }
+
+            // Tab state, reset if phase changes
+            const [selectedTab, setSelectedTab] = useState(tabs[0].key);
+            // Ensure selectedTab is valid for the current phase
+            if (!tabs.some(tab => tab.key === selectedTab)) {
+                setSelectedTab(tabs[0].key);
+            }
+
+            // Tab content switch
+            let tabComponent: JSX.Element;
+            if (phase === 'pre') {
+                if (selectedTab === 'summary') {
+                    tabComponent = renderPreGame({ gameInfo: displayGameData as GameInfo });
+                } else if (selectedTab === 'lineups') {
+                    tabComponent = (
+                        <vstack width="100%" alignment="center middle" padding="large">
+                            <text size="large">Lineups coming soon!</text>
+                        </vstack>
+                    );
+                } else {
+                    tabComponent = (
+                        <vstack width="100%" alignment="center middle" padding="large">
+                            <text size="large">Tab not found</text>
+                        </vstack>
+                    );
+                }
+            } else if (phase === 'live') {
+                if (selectedTab === 'summary') {
+                    tabComponent = renderInGame({ gameInfo: displayGameData as GameInfo });
+                } else if (selectedTab === 'allplays') {
+                    tabComponent = (
+                        <vstack width="100%" alignment="center middle" padding="large">
+                            <text size="large">All Plays coming soon!</text>
+                        </vstack>
+                    );
+                } else if (selectedTab === 'boxscore') {
+                    tabComponent = (
+                        <vstack width="100%" alignment="center middle" padding="large">
+                            <text size="large">Box Score coming soon!</text>
+                        </vstack>
+                    );
+                } else {
+                    tabComponent = (
+                        <vstack width="100%" alignment="center middle" padding="large">
+                            <text size="large">Tab not found</text>
+                        </vstack>
+                    );
+                }
+            } else if (phase === 'post') {
+                if (selectedTab === 'summary') {
+                    tabComponent = renderPostGame({ gameInfo: displayGameData as GameInfo });
+                } else if (selectedTab === 'playbyplay') {
+                    tabComponent = (
+                        <vstack width="100%" alignment="center middle" padding="large">
+                            <text size="large">Play by Play coming soon!</text>
+                        </vstack>
+                    );
+                } else if (selectedTab === 'boxscore') {
+                    tabComponent = (
+                        <vstack width="100%" alignment="center middle" padding="large">
+                            <text size="large">Box Score coming soon!</text>
+                        </vstack>
+                    );
+                } else {
+                    tabComponent = (
+                        <vstack width="100%" alignment="center middle" padding="large">
+                            <text size="large">Tab not found</text>
+                        </vstack>
+                    );
+                }
+            } else {
+                tabComponent = (
+                    <vstack width="100%" alignment="center middle" padding="large">
+                        <text size="large">Tab not found</text>
+                    </vstack>
+                );
+            }
+
             return (
                 <vstack padding="medium" gap="medium" backgroundColor="neutral-background-weak" width="100%" minHeight="100%">
                     <Header gameInfo={displayGameData as GameInfo} phase={phase} />
-                    {phaseComponent}
+                    {/* Tab Bar */}
+                    <hstack gap="small" alignment="center middle">
+                        {tabs.map(tab => (
+                            <button
+                                key={tab.key}
+                                size="small"
+                                appearance={selectedTab === tab.key ? 'bordered' : 'secondary'}
+                                onPress={() => setSelectedTab(tab.key)}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </hstack>
+                    {/* Tab Content */}
+                    {tabComponent}
                 </vstack>
             );
         }

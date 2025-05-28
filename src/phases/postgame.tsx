@@ -28,7 +28,7 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
     : `${homeWon ? gameInfo.homeTeam.name : gameInfo.awayTeam.name} defeat ${homeWon ? gameInfo.awayTeam.name : gameInfo.homeTeam.name}`;
 
   return (
-    <vstack width="100%" maxWidth={600} backgroundColor="neutral-background-weak" padding="large" gap="large">
+    <vstack>
       {/* Header Section */}
       <vstack width="100%" gap="small">
         <text size="large" weight="bold" alignment="center" color="neutral-content-strong">{gameInfo.awayTeam.name} @ {gameInfo.homeTeam.name}</text>
