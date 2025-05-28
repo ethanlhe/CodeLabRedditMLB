@@ -5,7 +5,8 @@ import { renderPostGame } from './phases/postgame.tsx';
 import { GameStateControls } from './ui/components/GameControls.tsx';
 import { Header } from './ui/components/Header.tsx';
 import { GamePhase, GameInfo, Score, GameBoxscore } from './types/game.ts';
-import { setupGameSelectionForm, parseGameBoxscore } from './forms/GameSelectionForm.tsx';
+import { setupGameSelectionForm } from './forms/GameSelectionForm.tsx';
+import { parseGameBoxscore, extractTeamStats } from './utils/gameParsers.js';
 
 export function setupBaseballApp() {
     Devvit.configure({
@@ -84,18 +85,19 @@ export function setupBaseballApp() {
         name: 'Baseball Scorecard',
         height: 'tall',
         render: (context) => {
-            const [isLive, setIsLive] = useState(false);
-            const [gameData, setGameData] = useState<GameInfo | null>(null);
+            const [isLive, setIsLive] = useState<boolean>(false);
+            const [gameData, setGameData] = useState<any>(null);
             const [gameId, setGameId] = useState<string | null>(null);
             const [lastUpdateTime, setLastUpdateTime] = useState<number>(Date.now());
 
             // Use useAsync for initial data load
-            const { loading, error, data: asyncGameData } = useAsync<GameInfo>(async () => {
+            const { loading, error, data: asyncGameData } = useAsync<any>(async () => {
                 try {
                     console.log('[Scoreboard] Loading game data for post:', context.postId);
                     const storedGameStr = await context.redis.get(`game_${context.postId}`);
                     let storedGame;
                     let boxscoreData;
+                    let extendedSummaryData;
                     let needsUpdate = false;
 
                     if (!storedGameStr) {
@@ -104,11 +106,19 @@ export function setupBaseballApp() {
                     } else {
                         storedGame = JSON.parse(storedGameStr);
                         boxscoreData = await context.redis.get(`boxscore_${storedGame.id}`);
+                        extendedSummaryData = await context.redis.get(`extended_summary_${storedGame.id}`);
                         
                         // Check if boxscore data is stale (older than 5 minutes)
                         const timestamp = await context.redis.get(`boxscore_${storedGame.id}_timestamp`);
                         if (!timestamp || (Date.now() / 1000 - parseInt(timestamp)) > 300) {
                             console.log('[Scoreboard] Boxscore data is stale, fetching fresh data...');
+                            needsUpdate = true;
+                        }
+
+                        // Check if extended summary data is stale (older than 5 minutes)
+                        const extendedSummaryTimestamp = await context.redis.get(`extended_summary_${storedGame.id}_timestamp`);
+                        if (!extendedSummaryTimestamp || (Date.now() / 1000 - parseInt(extendedSummaryTimestamp)) > 300) {
+                            console.log('[Scoreboard] Extended summary data is stale, fetching fresh data...');
                             needsUpdate = true;
                         }
                     }
@@ -147,6 +157,27 @@ export function setupBaseballApp() {
                         await context.redis.set(`boxscore_${storedGame.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
                         
                         boxscoreData = JSON.stringify(newData);
+
+                        // Fetch fresh extended summary data
+                        const extendedSummaryResponse = await fetch(
+                            `https://api.sportradar.us/mlb/trial/v8/en/games/${storedGame.id}/extended_summary.json`,
+                            {
+                                headers: {
+                                    'accept': 'application/json',
+                                    'x-api-key': API_KEY as string
+                                }
+                            }
+                        );
+
+                        if (extendedSummaryResponse.ok) {
+                            const newExtendedSummaryData = await extendedSummaryResponse.json();
+                            await context.redis.set(`extended_summary_${storedGame.id}`, JSON.stringify(newExtendedSummaryData));
+                            await context.redis.set(`extended_summary_${storedGame.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
+                            extendedSummaryData = JSON.stringify(newExtendedSummaryData);
+                            console.log('Fetched extended summary:', JSON.stringify(extendedSummaryData, null, 2));
+                        } else {
+                            console.error('[Scoreboard] Failed to fetch extended summary:', extendedSummaryResponse.status);
+                        }
                     }
 
                     if (!boxscoreData) {
@@ -167,6 +198,23 @@ export function setupBaseballApp() {
                         await context.redis.hset('active_games', storedGame.id);
                     }
                     
+                    // After extracting team stats:
+                    const homeStats = extractTeamStats(parsedData.game.home.statistics);
+                    const awayStats = extractTeamStats(parsedData.game.away.statistics);
+                    console.log('Extracted home teamStats:', homeStats);
+                    console.log('Extracted away teamStats:', awayStats);
+
+                    // After fetching and parsing extendedSummaryData:
+                    let extendedHomeStats, extendedAwayStats;
+                    if (extendedSummaryData) {
+                        let parsedExtendedSummary = typeof extendedSummaryData === 'string' ? JSON.parse(extendedSummaryData) : extendedSummaryData;
+                        if (parsedExtendedSummary?.game) {
+                            extendedHomeStats = extractTeamStats(parsedExtendedSummary.game?.home?.statistics);
+                            extendedAwayStats = extractTeamStats(parsedExtendedSummary.game?.away?.statistics);
+                            parsedGameInfo.teamStats = { home: extendedHomeStats, away: extendedAwayStats };
+                        }
+                    }
+
                     return parsedGameInfo;
                 } catch (err) {
                     console.error('[Scoreboard] Error loading game data:', err);
@@ -332,6 +380,9 @@ export function setupBaseballApp() {
                     </vstack>
                 );
             }
+
+            // Before rendering postgame view:
+            console.log('Postgame gameInfo.teamStats:', displayGameData.teamStats);
 
             return (
                 <vstack padding="medium" gap="medium" backgroundColor="neutral-background-weak" width="100%" minHeight="100%">

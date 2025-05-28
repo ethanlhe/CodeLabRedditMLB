@@ -22,6 +22,19 @@ export interface WeatherInfo {
   [key: string]: string | number;
 }
 
+export interface TeamStats {
+  R: number;
+  H: number;
+  HR: number;
+  TB: number;
+  SB: number;
+  LOB: number;
+  E: number;
+  K: number;
+  SO: number;
+  BB: number;
+}
+
 export interface GameInfo {
   id: string;
   league: string;
@@ -34,7 +47,11 @@ export interface GameInfo {
   probablePitchers: ProbablePitchers | null;
   weather: WeatherInfo | null;
   broadcasts: string | null;
-  [key: string]: string | TeamInfo | ProbablePitchers | WeatherInfo | null;
+  teamStats?: {
+    home: TeamStats;
+    away: TeamStats;
+  };
+  [key: string]: string | TeamInfo | ProbablePitchers | WeatherInfo | TeamStats | { home: TeamStats; away: TeamStats } | null | undefined;
 }
 
 export interface Score {

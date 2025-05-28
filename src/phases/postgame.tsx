@@ -29,12 +29,6 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
 
   return (
     <vstack>
-      {/* Header Section */}
-      <vstack width="100%" gap="small">
-        <text size="large" weight="bold" alignment="center" color="neutral-content-strong">{gameInfo.awayTeam.name} @ {gameInfo.homeTeam.name}</text>
-        <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.date} • {gameInfo.currentTime}</text>
-        <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.location}</text>
-      </vstack>
       {/* Score Row */}
       <hstack width="100%" alignment="center middle" gap="large" padding="small">
         {/* Away Team */}
@@ -91,25 +85,53 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
             <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.homeTeam.record}</text>
         </vstack>
       </hstack>
-      {/* Summary Line and Details */}
-      <vstack width="100%" gap="small">
-        <text size="medium" color="success-plain" weight="bold" alignment="center">
-          {summaryLine}
-        </text>
-        {(gameInfo.weather && gameInfo.weather.condition && gameInfo.weather.temp) || gameInfo.broadcasts ? (
-          <hstack width="100%" gap="medium" alignment="center middle">
-            {gameInfo.weather && gameInfo.weather.condition && gameInfo.weather.temp ? (
-              <text size="small" color="neutral-content-strong" alignment="center">
-                Weather: {gameInfo.weather.condition}, {gameInfo.weather.temp}°F
-              </text>
-            ) : null}
-            {gameInfo.broadcasts ? (
-              <text size="small" color="neutral-content-strong" alignment="center">
-                Broadcast: {gameInfo.broadcasts}
-              </text>
-            ) : null}
-          </hstack>
-        ) : null}
+      {/* Team Stats Section */}
+      <vstack gap="small" width="100%">
+        <text size="small" weight="bold">Team Stats</text>
+        <hstack gap="medium" alignment="center middle">
+          <text size="xsmall" weight="bold" color="neutral-content-weak">TEAM</text>
+          <spacer grow />
+          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>R</text>
+          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>H</text>
+          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>HR</text>
+          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>TB</text>
+          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>SB</text>
+          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>LOB</text>
+          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>E</text>
+          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>K</text>
+          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>SO</text>
+          <text size="xsmall" weight="bold" color="neutral-content-weak">BB</text>
+        </hstack>
+        {/* Away team row */}
+        <hstack gap="medium" alignment="center middle">
+          <text size="small" weight="bold">{gameInfo.awayTeam.abbreviation}</text>
+          <spacer grow />
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.away.R}</text>
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.away.H}</text>
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.away.HR}</text>
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.away.TB}</text>
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.away.SB}</text>
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.away.LOB}</text>
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.away.E}</text>
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.away.K}</text>
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.away.SO}</text>
+          <text size="small">{gameInfo.teamStats?.away.BB}</text>
+        </hstack>
+        {/* Home team row */}
+        <hstack gap="medium" alignment="center middle">
+          <text size="small" weight="bold">{gameInfo.homeTeam.abbreviation}</text>
+          <spacer grow />
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.home.R}</text>
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.home.H}</text>
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.home.HR}</text>
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.home.TB}</text>
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.home.SB}</text>
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.home.LOB}</text>
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.home.E}</text>
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.home.K}</text>
+          <text size="small" minWidth={8}>{gameInfo.teamStats?.home.SO}</text>
+          <text size="small">{gameInfo.teamStats?.home.BB}</text>
+        </hstack>
       </vstack>
     </vstack>
   );
