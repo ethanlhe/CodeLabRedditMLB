@@ -15,8 +15,7 @@ export function Header({ gameInfo, phase }: HeaderProps) {
     <vstack width="100%" gap="none" padding="none">
       <hstack width="100%" backgroundColor="neutral-background-weak" alignment="start middle">
         <hstack gap="small" alignment="start middle">
-          <text size="small">⚾</text>
-          <text size="small" weight="bold" color="neutral-content-strong">MLB {year}</text>
+          <text size="medium" weight="bold" color="neutral-content-strong">MLB</text>
         </hstack>
         <spacer grow />
         {phase === 'live' && (
@@ -39,6 +38,8 @@ export function Header({ gameInfo, phase }: HeaderProps) {
       <text size="small" color="#888" alignment="start">
         {dateNoYear} • {gameInfo.location}
       </text>
+      <hstack padding="xsmall"/>
+      <hstack width="100%" backgroundColor="#E0E1E1" height="1px" />
     </vstack>
   );
 }

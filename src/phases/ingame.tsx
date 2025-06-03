@@ -29,7 +29,7 @@ export function renderInGame({ gameInfo }: InGameProps) {
   const homeLogo = MLB_LOGOS[homeAbbr];
 
   return (
-    <vstack width="100%" maxWidth={600} backgroundColor="neutral-background-weak" padding="large" gap="large">
+    <vstack width="100%" maxWidth={600} backgroundColor="neutral-background-weak" padding="none" gap="large">
       {/* Header Section */}
       <vstack width="100%" gap="small">
         <text size="large" weight="bold" alignment="center" color="neutral-content-strong">{gameInfo.awayTeam.name} @ {gameInfo.homeTeam.name}</text>

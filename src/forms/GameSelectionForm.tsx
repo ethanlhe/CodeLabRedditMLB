@@ -112,10 +112,39 @@ export function setupGameSelectionForm() {
                             const actualGameId = Array.isArray(gameId) ? gameId[0] : gameId;
                             
                             // Store the game data in our global state
-                            const selectedGame = data.games.find((game: any) => game.id === actualGameId);
+                            let selectedGame = data.games.find((game: any) => game.id === actualGameId);
                             
+                            // If game not found in cache, fetch fresh data
                             if (!selectedGame) {
-                                throw new Error(`Selected game not found. Game ID: ${actualGameId}`);
+                                console.log('Game not found in cache, fetching fresh schedule data...');
+                                const freshResponse = await fetch(
+                                    `https://api.sportradar.us/mlb/trial/v8/en/games/${year}/${month}/${day}/schedule.json`,
+                                    {
+                                        headers: {
+                                            'accept': 'application/json',
+                                            'x-api-key': API_KEY as string
+                                        }
+                                    }
+                                );
+
+                                if (!freshResponse.ok) {
+                                    throw new Error(`Failed to fetch fresh games: ${freshResponse.status} - ${await freshResponse.text()}`);
+                                }
+
+                                const freshData = await freshResponse.json();
+                                if (!freshData || !freshData.games) {
+                                    throw new Error('Invalid response format from fresh API data');
+                                }
+
+                                // Update cache with fresh data
+                                await gameContext.redis.set(cacheKey, JSON.stringify(freshData));
+                                
+                                // Try to find the game in fresh data
+                                selectedGame = freshData.games.find((game: any) => game.id === actualGameId);
+                                
+                                if (!selectedGame) {
+                                    throw new Error(`Selected game not found in fresh data. Game ID: ${actualGameId}`);
+                                }
                             }
 
                             ui.showToast("Creating your baseball scorecard - you'll be navigated there upon completion.");
@@ -183,15 +212,30 @@ export function setupGameSelectionForm() {
                                 await gameContext.redis.set(`extended_summary_${selectedGame.id}`, JSON.stringify(extendedSummaryData));
                                 await gameContext.redis.set(`extended_summary_${selectedGame.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
 
-                                const homeStats = extractTeamStats(extendedSummaryData.home.statistics);
-                                const awayStats = extractTeamStats(extendedSummaryData.away.statistics);
+                                // Add null checks for the data structure
+                                if (extendedSummaryData?.home?.statistics && extendedSummaryData?.away?.statistics) {
+                                    const homeStats = extractTeamStats(extendedSummaryData.home.statistics);
+                                    const awayStats = extractTeamStats(extendedSummaryData.away.statistics);
 
-                                selectedGame.teamStats = {
-                                    home: homeStats,
-                                    away: awayStats
-                                };
+                                    selectedGame.teamStats = {
+                                        home: homeStats,
+                                        away: awayStats
+                                    };
+                                } else {
+                                    console.warn('Extended summary data missing statistics:', extendedSummaryData);
+                                    // Set default stats if data is missing
+                                    selectedGame.teamStats = {
+                                        home: { R: 0, H: 0, HR: 0, TB: 0, SB: 0, LOB: 0, E: 0, K: 0, SO: 0, BB: 0 },
+                                        away: { R: 0, H: 0, HR: 0, TB: 0, SB: 0, LOB: 0, E: 0, K: 0, SO: 0, BB: 0 }
+                                    };
+                                }
                             } else {
                                 console.error('Failed to fetch initial extended summary:', extendedSummaryResponse.status);
+                                // Set default stats if the request fails
+                                selectedGame.teamStats = {
+                                    home: { R: 0, H: 0, HR: 0, TB: 0, SB: 0, LOB: 0, E: 0, K: 0, SO: 0, BB: 0 },
+                                    away: { R: 0, H: 0, HR: 0, TB: 0, SB: 0, LOB: 0, E: 0, K: 0, SO: 0, BB: 0 }
+                                };
                             }
 
                             // Navigate to the post
