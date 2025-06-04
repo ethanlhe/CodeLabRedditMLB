@@ -63,7 +63,7 @@ export interface GameInfo {
     home: InningScore[];
     away: InningScore[];
   };
-  [key: string]: string | TeamInfo | ProbablePitchers | WeatherInfo | TeamStats | { home: TeamStats; away: TeamStats } | null | undefined;
+  [key: string]: string | TeamInfo | ProbablePitchers | WeatherInfo | TeamStats | { home: TeamStats; away: TeamStats } | { home: InningScore[]; away: InningScore[] } | null | undefined;
 }
 
 export interface Score {

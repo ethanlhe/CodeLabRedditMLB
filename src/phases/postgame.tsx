@@ -85,6 +85,46 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
             <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.homeTeam.record}</text>
         </vstack>
       </hstack>
+      <spacer size="small" />
+      <hstack width="100%" backgroundColor="#E0E1E1" height="1px" />
+      <spacer size="small" />
+      {/* Inning-by-inning scoring */}
+      {gameInfo.scoring ? (
+        <vstack gap="small" width="100%">
+          <hstack gap="medium" alignment="center middle">
+            <text size="xsmall" weight="bold" color="neutral-content-weak">TEAM</text>
+            <spacer grow />
+            {gameInfo.scoring.home.map((inning, idx) => (
+              <text key={String(idx)} size="xsmall" weight="bold" color="neutral-content-weak" minWidth={6}>{String(inning.number ?? '')}</text>
+            ))}
+            <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={6}>R</text>
+            <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={6}>H</text>
+            <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={6}>E</text>
+          </hstack>
+          {/* Away team row */}
+          <hstack gap="medium" alignment="center middle">
+            <text size="small" weight="bold">{gameInfo.awayTeam.abbreviation ?? ''}</text>
+            <spacer grow />
+            {gameInfo.scoring.away.map((inning, idx) => (
+              <text key={String(idx)} size="small" minWidth={6}>{String(inning.runs ?? '')}</text>
+            ))}
+            <text size="small" minWidth={6}>{String(gameInfo.teamStats?.away.R ?? '')}</text>
+            <text size="small" minWidth={6}>{String(gameInfo.teamStats?.away.H ?? '')}</text>
+            <text size="small" minWidth={6}>{String(gameInfo.teamStats?.away.E ?? '')}</text>
+          </hstack>
+          {/* Home team row */}
+          <hstack gap="medium" alignment="center middle">
+            <text size="small" weight="bold">{gameInfo.homeTeam.abbreviation ?? ''}</text>
+            <spacer grow />
+            {gameInfo.scoring.home.map((inning, idx) => (
+              <text key={String(idx)} size="small" minWidth={6}>{String(inning.runs ?? '')}</text>
+            ))}
+            <text size="small" minWidth={6}>{String(gameInfo.teamStats?.home.R ?? '')}</text>
+            <text size="small" minWidth={6}>{String(gameInfo.teamStats?.home.H ?? '')}</text>
+            <text size="small" minWidth={6}>{String(gameInfo.teamStats?.home.E ?? '')}</text>
+          </hstack>
+        </vstack>
+      ) : null}
       {/* Team Stats Section */}
       <vstack gap="small" width="100%">
         <text size="small" weight="bold">Team Stats</text>
@@ -133,42 +173,6 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
           <text size="small">{gameInfo.teamStats?.home.BB}</text>
         </hstack>
       </vstack>
-      {/* Inning-by-inning scoring */}
-      {gameInfo.scoring ? (
-        <vstack gap="small" width="100%">
-          <text size="small" weight="bold">Inning-by-Inning</text>
-          <hstack gap="medium" alignment="center middle">
-            <text size="xsmall" weight="bold" color="neutral-content-weak">TEAM</text>
-            <spacer grow />
-            {gameInfo.scoring.home.map((inning, idx) => (
-              <text key={String(idx)} size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>{String(inning.number ?? '')}</text>
-            ))}
-            <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>R</text>
-            <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>H</text>
-            <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>E</text>
-          </hstack>
-          {/* Away team row */}
-          <hstack gap="medium" alignment="center middle">
-            <text size="small" weight="bold">{gameInfo.awayTeam.abbreviation ?? ''}</text>
-            {gameInfo.scoring.away.map((inning, idx) => (
-              <text key={String(idx)} size="small" minWidth={8}>{String(inning.runs ?? '')}</text>
-            ))}
-            <text size="small" minWidth={8}>{String(gameInfo.teamStats?.away.R ?? '')}</text>
-            <text size="small" minWidth={8}>{String(gameInfo.teamStats?.away.H ?? '')}</text>
-            <text size="small" minWidth={8}>{String(gameInfo.teamStats?.away.E ?? '')}</text>
-          </hstack>
-          {/* Home team row */}
-          <hstack gap="medium" alignment="center middle">
-            <text size="small" weight="bold">{gameInfo.homeTeam.abbreviation ?? ''}</text>
-            {gameInfo.scoring.home.map((inning, idx) => (
-              <text key={String(idx)} size="small" minWidth={8}>{String(inning.runs ?? '')}</text>
-            ))}
-            <text size="small" minWidth={8}>{String(gameInfo.teamStats?.home.R ?? '')}</text>
-            <text size="small" minWidth={8}>{String(gameInfo.teamStats?.home.H ?? '')}</text>
-            <text size="small" minWidth={8}>{String(gameInfo.teamStats?.home.E ?? '')}</text>
-          </hstack>
-        </vstack>
-      ) : null}
     </vstack>
   );
 } 
