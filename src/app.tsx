@@ -1,4 +1,4 @@
-import { Devvit, useState, useAsync, useChannel } from '@devvit/public-api';
+import { Devvit, useState, useAsync, useChannel, FormOnSubmitEvent } from '@devvit/public-api';
 import { renderPreGame } from './phases/pregame.tsx';
 import { renderInGame } from './phases/ingame.tsx';
 import { renderPostGame } from './phases/postgame.tsx';
@@ -6,7 +6,7 @@ import { GameStateControls } from './ui/components/GameControls.tsx';
 import { Header } from './ui/components/Header.tsx';
 import { GamePhase, GameInfo, Score, GameBoxscore } from './types/game.ts';
 import { setupGameSelectionForm, parseGameBoxscore } from './forms/GameSelectionForm.tsx';
-
+import * as chrono from 'chrono-node';
 
 export function setupBaseballApp() {
     Devvit.configure({
@@ -191,7 +191,7 @@ export function setupBaseballApp() {
                     await context.redis.set(userKey, '1');
                     const txn = await context.redis.watch(`poll:${team}`);
                     await txn.multi();
-                    await txn.incrBy(`poll:${team}`, 1); // Increment the selected team's votes
+                    await txn.incrBy(`poll:${team}`, 1);
                     await txn.exec();
                 }
 
@@ -230,6 +230,7 @@ export function setupBaseballApp() {
                     getPollResults,
                     homePlayers,
                     awayPlayers,
+                    context
                 });
             } else if (displayGameData.status === 'in-progress') {
                 phase = 'live';
@@ -242,7 +243,7 @@ export function setupBaseballApp() {
             // Render the scoreboard UI
             const pollingStatus = Date.now() - lastUpdateTime < 35000;
             return (
-                <vstack padding="medium" gap="medium" backgroundColor="#F9FAFA" width="100%" minHeight="100%">
+                <vstack padding="small" gap="small" backgroundColor="#F9FAFA" width="100%" minHeight="100%">
                     <Header gameInfo={displayGameData as GameInfo} phase={phase} />
                     {phaseComponent}
                 </vstack>

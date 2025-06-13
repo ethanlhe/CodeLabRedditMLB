@@ -15,37 +15,19 @@ export function Header({ gameInfo, phase }: HeaderProps) {
   const timeWithZone = gameInfo.currentTime ? `${gameInfo.currentTime} ${gameInfo.timezone || 'ET'}` : '';
 
   return (
-    <vstack width="100%" gap="none" padding="none">
+    <vstack
+      width="100%"
+      cornerRadius="large"
+      padding="small"
+      gap="none"
+    >
       <hstack width="100%" alignment="start middle">
-        <hstack gap="small" alignment="start middle">
-          <text size="small">⚾</text>
-          <text size="small" weight="bold" color="#0F1A1C">MLB {year}</text>
-        </hstack>
-        <spacer />
-        {phase === 'live' && (
-          <hstack gap="small" alignment="center middle">
-            <image
-              url="liveicon.png"
-              imageWidth={36}
-              imageHeight={20}
-              description="Live game logo"
-            />
-          </hstack>
-        )}
-        {phase === 'pre' && (
-          <text size="small" color="#888">Pre-Game</text>
-        )}
-        {phase === 'post' && (
-          <text size="small" color="#888">Final</text>
-        )}
-      </hstack>
-      <hstack gap="small" alignment="end">
-        <text size="small" color="#888" alignment="end">{timeWithZone}</text>
+        <text size="medium" weight="bold" color="#0F1A1C">MLB</text>
+        <spacer grow />
+        <text size="small" weight="bold" color="#576F76">{timeWithZone}</text>
       </hstack>
       <hstack width="100%" alignment="start middle">
-        <text size="small" color="#888" alignment="start">
-          {dateNoYear} • {gameInfo.location}
-        </text>
+        <text size="small" color="#5A7684">{dateNoYear} • {gameInfo.location}</text>
       </hstack>
     </vstack>
   );
