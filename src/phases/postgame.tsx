@@ -249,10 +249,9 @@ export function PlayByPlayTab({ playByPlayData }: { playByPlayData: string | nul
       ))}
       <spacer grow />
       {/* Pagination controls */}
-      <hstack alignment="middle center" gap="small" backgroundColor="neutral-background-weak" padding="large">
-        <button onPress={toPrevPage} icon="left" disabled={isFirstPage} />
-        <text size="large" weight="bold">{currentPage + 1} / {pagesCount}</text>
-        <button onPress={toNextPage} icon="right" disabled={isLastPage} />
+      <hstack alignment="end middle" gap="small" backgroundColor="neutral-background-weak" minHeight="100px">
+        <button onPress={toPrevPage} icon="up" disabled={isFirstPage} />
+        <button onPress={toNextPage} icon="down" disabled={isLastPage} />
       </hstack>
     </vstack>
   );

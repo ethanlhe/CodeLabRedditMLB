@@ -22,6 +22,26 @@ interface PlayerStats {
   ops: number;
 }
 
+// Pagination hook for vertical (up/down) navigation
+function useVerticalPagination<ItemType>(items: ItemType[], itemsPerPage: number) {
+  const [currentPage, setCurrentPage] = useState(0);
+  const pagesCount = Math.ceil(items.length / itemsPerPage);
+  const isFirstPage = currentPage === 0;
+  const isLastPage = currentPage === pagesCount - 1;
+  return {
+    currentPage,
+    pagesCount,
+    currentItems: items.slice(
+      currentPage * itemsPerPage,
+      currentPage * itemsPerPage + itemsPerPage
+    ),
+    isFirstPage,
+    isLastPage,
+    toPrevPage: isFirstPage ? undefined : () => setCurrentPage(currentPage - 1),
+    toNextPage: isLastPage ? undefined : () => setCurrentPage(currentPage + 1),
+  };
+}
+
 export function BoxScoreTab({ gameInfo, extendedSummaryData }: BoxScoreTabProps) {
   if (!extendedSummaryData) {
     return <text color="red">No boxscore data available.</text>;
@@ -70,16 +90,23 @@ export function BoxScoreTab({ gameInfo, extendedSummaryData }: BoxScoreTabProps)
   // Team switcher state
   const [selectedTeam, setSelectedTeam] = useState<'home' | 'away'>('away');
 
+  // Pagination for player stats
+  const players = selectedTeam === 'away' ? awayPlayerStats : homePlayerStats;
+  const { currentItems, currentPage, pagesCount, toPrevPage, toNextPage, isFirstPage, isLastPage } =
+    useVerticalPagination(players, 8); // Show 8 players per page
+
   // Render team switcher tabs
   const teamTabs = (
     <hstack gap="small" alignment="center middle">
       <button
+        size='small'
         appearance={selectedTeam === 'away' ? 'secondary' : 'plain'}
         onPress={() => setSelectedTeam('away')}
       >
         {gameInfo.awayTeam.name}
       </button>
       <button
+        size='small'
         appearance={selectedTeam === 'home' ? 'secondary' : 'plain'}
         onPress={() => setSelectedTeam('home')}
       >
@@ -127,14 +154,17 @@ export function BoxScoreTab({ gameInfo, extendedSummaryData }: BoxScoreTabProps)
     </vstack>
   );
 
-  // Show only the selected team's table
+  // Show only the selected team's table with pagination
   return (
     <vstack gap="medium" width="100%" minHeight="400px">
-      {teamTabs}
-      {selectedTeam === 'away'
-        ? renderPlayerStatsTable(awayPlayerStats, gameInfo.awayTeam.name)
-        : renderPlayerStatsTable(homePlayerStats, gameInfo.homeTeam.name)
-      }
+      <hstack alignment="end middle" gap="small" backgroundColor="neutral-background-weak">
+        {teamTabs}
+        <spacer grow />
+        <button size='small' onPress={toPrevPage} icon="left" disabled={isFirstPage} />
+        <text size="small" weight="bold">{currentPage + 1} / {pagesCount}</text>
+        <button size='small' onPress={toNextPage} icon="right" disabled={isLastPage} />
+      </hstack>
+      {renderPlayerStatsTable(currentItems, selectedTeam === 'away' ? gameInfo.awayTeam.name : gameInfo.homeTeam.name)}
     </vstack>
   );
 } 
