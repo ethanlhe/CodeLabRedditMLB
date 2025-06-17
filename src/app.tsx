@@ -390,7 +390,7 @@ export function setupBaseballApp() {
                     {/* Tab Bar */}
                     <hstack gap="small" alignment="center middle">
                         {tabs.map(tab => (
-                            <hstack backgroundColor="neutral-background-weak" borderColor="#D4D5D7" cornerRadius="full">
+                            <hstack backgroundColor="neutral-background-weak" borderColor="neutral-border-weak" cornerRadius="full">
                             <button
                                 key={tab.key}
                                 size="small"

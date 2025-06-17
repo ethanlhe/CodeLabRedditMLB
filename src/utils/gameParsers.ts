@@ -34,6 +34,30 @@ export function parseGameBoxscore(data: GameBoxscore): GameInfo {
   let status = data.status;
   if (status === 'inprogress' || status === 'in_progress' || status === 'live') status = 'in-progress';
 
+  // Parse scoring for both teams if available
+  let scoring = undefined;
+  if (data.home?.scoring && data.away?.scoring) {
+    scoring = {
+      home: data.home.scoring,
+      away: data.away.scoring,
+    };
+  } else if (data.linescore?.innings) {
+    // Fallback: parse from linescore.innings if present
+    const homeScores = data.linescore.innings.map((inning: any) => ({
+      number: inning.number,
+      runs: inning.home?.runs ?? 0,
+      hits: inning.home?.hits ?? 0,
+      errors: inning.home?.errors ?? 0,
+    }));
+    const awayScores = data.linescore.innings.map((inning: any) => ({
+      number: inning.number,
+      runs: inning.away?.runs ?? 0,
+      hits: inning.away?.hits ?? 0,
+      errors: inning.away?.errors ?? 0,
+    }));
+    scoring = { home: homeScores, away: awayScores };
+  }
+
   return {
     id: data.id,
     league: 'MLB',
@@ -70,6 +94,7 @@ export function parseGameBoxscore(data: GameBoxscore): GameInfo {
       condition: data.weather.condition,
       temp: data.weather.temp
     } : null,
-    broadcasts: data.broadcasts?.map((b: { network: string }) => b.network).join(', ') || null
+    broadcasts: data.broadcasts?.map((b: { network: string }) => b.network).join(', ') || null,
+    scoring,
   };
 }

@@ -35,6 +35,14 @@ export interface TeamStats {
   BB: number;
 }
 
+export interface InningScore {
+  number: number;
+  runs: number;
+  hits: number;
+  errors: number;
+  // Add other fields as needed
+}
+
 export interface GameInfo {
   id: string;
   league: string;
@@ -51,7 +59,11 @@ export interface GameInfo {
     home: TeamStats;
     away: TeamStats;
   };
-  [key: string]: string | TeamInfo | ProbablePitchers | WeatherInfo | TeamStats | { home: TeamStats; away: TeamStats } | null | undefined;
+  scoring?: {
+    home: InningScore[];
+    away: InningScore[];
+  };
+  [key: string]: string | TeamInfo | ProbablePitchers | WeatherInfo | TeamStats | { home: TeamStats; away: TeamStats } | { home: InningScore[]; away: InningScore[] } | null | undefined;
 }
 
 export interface Score {
