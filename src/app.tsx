@@ -2,6 +2,7 @@ import { Devvit, useState, useAsync, useChannel } from '@devvit/public-api';
 import { renderPreGame } from './phases/pregame.tsx';
 import { renderInGame } from './phases/ingame.tsx';
 import { renderPostGame, PlayByPlayTab } from './phases/postgame.tsx';
+import { BoxScoreTab } from './phases/BoxScoreTab.tsx';
 import { GameStateControls } from './ui/components/GameControls.tsx';
 import { Header } from './ui/components/Header.tsx';
 import { GamePhase, GameInfo, Score, GameBoxscore } from './types/game.ts';
@@ -207,6 +208,7 @@ export function setupBaseballApp() {
                             extendedHomeStats =  extractTeamStats(parsedExtendedSummary.game?.home?.statistics);
                             extendedAwayStats = extractTeamStats(parsedExtendedSummary.game?.away?.statistics);
                             parsedGameInfo.teamStats = { home: extendedHomeStats, away: extendedAwayStats };
+                            parsedGameInfo.extendedSummaryData = parsedExtendedSummary;
                         }
                     }
 
@@ -386,9 +388,10 @@ export function setupBaseballApp() {
                     );
                 } else if (selectedTab === 'boxscore') {
                     tabComponent = (
-                        <vstack width="100%" alignment="center middle" padding="large">
-                            <text size="large">Box Score coming soon!</text>
-                        </vstack>
+                        <BoxScoreTab 
+                            gameInfo={displayGameData as GameInfo} 
+                            extendedSummaryData={asyncGameData.extendedSummaryData} 
+                        />
                     );
                 } else {
                     tabComponent = (

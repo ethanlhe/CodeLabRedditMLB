@@ -63,6 +63,8 @@ export interface GameInfo {
     home: InningScore[];
     away: InningScore[];
   };
+  playByPlayData?: string | null;
+  extendedSummaryData?: any;
   [key: string]: string | TeamInfo | ProbablePitchers | WeatherInfo | TeamStats | { home: TeamStats; away: TeamStats } | { home: InningScore[]; away: InningScore[] } | null | undefined;
 }
 
