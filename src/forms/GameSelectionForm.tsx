@@ -149,6 +149,12 @@ export function setupGameSelectionForm() {
 
                             ui.showToast("Creating your baseball scorecard - you'll be navigated there upon completion.");
                         
+                            // Store the game data in Redis before navigating
+                            if (!selectedGame || !selectedGame.id) {
+                                throw new Error('Invalid game data selected');
+                            }
+
+                            // Create the post first
                             const subreddit = await reddit.getCurrentSubreddit();
                             const post = await reddit.submitPost({
                                 title: title,
@@ -160,82 +166,89 @@ export function setupGameSelectionForm() {
                                 ),
                             });
 
-                            // Store the game data in Redis before navigating
-                            await gameContext.redis.set(`game_${post.id}`, JSON.stringify(selectedGame));
-
-                            // Fetch and store the initial boxscore data
-                            const boxscoreResponse = await fetch(
-                                `https://api.sportradar.us/mlb/trial/v8/en/games/${selectedGame.id}/boxscore.json`,
-                                {
-                                    headers: {
-                                        'accept': 'application/json',
-                                        'x-api-key': API_KEY as string
+                            try {
+                                // Fetch and store the initial boxscore data first
+                                const boxscoreResponse = await fetch(
+                                    `https://api.sportradar.us/mlb/trial/v8/en/games/${selectedGame.id}/boxscore.json`,
+                                    {
+                                        headers: {
+                                            'accept': 'application/json',
+                                            'x-api-key': API_KEY as string
+                                        }
                                     }
-                                }
-                            );
+                                );
 
-                            if (boxscoreResponse.ok) {
+                                if (!boxscoreResponse.ok) {
+                                    throw new Error(`Failed to fetch initial boxscore: ${boxscoreResponse.status}`);
+                                }
+
                                 const boxscoreData = await boxscoreResponse.json();
+                                if (!boxscoreData || !boxscoreData.game) {
+                                    throw new Error('Invalid boxscore data received');
+                                }
+
+                                // Update the game data with boxscore info
+                                selectedGame.status = boxscoreData.game.status;
+                                
+                                // Store the complete game data in Redis
+                                await gameContext.redis.set(`game_${post.id}`, JSON.stringify(selectedGame));
                                 await gameContext.redis.set(`boxscore_${selectedGame.id}`, JSON.stringify(boxscoreData));
                                 await gameContext.redis.set(`boxscore_${selectedGame.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
+                                
+                                // Add to active games if live
+                                if (boxscoreData.game.status === 'in-progress') {
+                                    await gameContext.redis.hset('active_games', selectedGame.id);
+                                }
 
-                                // Update the game data in Redis to reflect the live status from the boxscore
-                                if (boxscoreData && boxscoreData.game && boxscoreData.game.status) {
-                                    selectedGame.status = boxscoreData.game.status;
-                                    await gameContext.redis.set(`game_${post.id}`, JSON.stringify(selectedGame));
+                                // Fetch and store the initial extended summary data
+                                const extendedSummaryResponse = await fetch(
+                                    `https://api.sportradar.us/mlb/trial/v8/en/games/${selectedGame.id}/extended_summary.json`,
+                                    {
+                                        headers: {
+                                            'accept': 'application/json',
+                                            'x-api-key': API_KEY as string
+                                        }
+                                    }
+                                );
+
+                                if (extendedSummaryResponse.ok) {
+                                    const extendedSummaryData = await extendedSummaryResponse.json();
+                                    if (extendedSummaryData?.home?.statistics && extendedSummaryData?.away?.statistics) {
+                                        const homeStats = extractTeamStats(extendedSummaryData.home.statistics);
+                                        const awayStats = extractTeamStats(extendedSummaryData.away.statistics);
+
+                                        selectedGame.teamStats = {
+                                            home: homeStats,
+                                            away: awayStats
+                                        };
+                                    } else {
+                                        console.warn('Extended summary data missing statistics:', extendedSummaryData);
+                                        selectedGame.teamStats = {
+                                            home: { R: 0, H: 0, HR: 0, TB: 0, SB: 0, LOB: 0, E: 0, K: 0, SO: 0, BB: 0 },
+                                            away: { R: 0, H: 0, HR: 0, TB: 0, SB: 0, LOB: 0, E: 0, K: 0, SO: 0, BB: 0 }
+                                        };
+                                    }
                                     
-                                    // Add to active games if live
-                                    if (boxscoreData.game.status === 'in-progress') {
-                                        await gameContext.redis.hset('active_games', selectedGame.id);
-                                    }
-                                }
-                            } else {
-                                console.error('Failed to fetch initial boxscore:', boxscoreResponse.status);
-                                // Still store the initial game data even if boxscore fetch fails
-                                await gameContext.redis.set(`game_${post.id}`, JSON.stringify(selectedGame));
-                                ui.showToast('Created scorecard with initial game data. Live updates may be delayed.');
-                            }
-
-                            // Fetch and store the initial extended summary data
-                            const extendedSummaryResponse = await fetch(
-                                `https://api.sportradar.us/mlb/trial/v8/en/games/${selectedGame.id}/extended_summary.json`,
-                                {
-                                    headers: {
-                                        'accept': 'application/json',
-                                        'x-api-key': API_KEY as string
-                                    }
-                                }
-                            );
-
-                            if (extendedSummaryResponse.ok) {
-                                const extendedSummaryData = await extendedSummaryResponse.json();
-                                await gameContext.redis.set(`extended_summary_${selectedGame.id}`, JSON.stringify(extendedSummaryData));
-                                await gameContext.redis.set(`extended_summary_${selectedGame.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
-
-                                // Add null checks for the data structure
-                                if (extendedSummaryData?.home?.statistics && extendedSummaryData?.away?.statistics) {
-                                    const homeStats = extractTeamStats(extendedSummaryData.home.statistics);
-                                    const awayStats = extractTeamStats(extendedSummaryData.away.statistics);
-
-                                    selectedGame.teamStats = {
-                                        home: homeStats,
-                                        away: awayStats
-                                    };
+                                    await gameContext.redis.set(`extended_summary_${selectedGame.id}`, JSON.stringify(extendedSummaryData));
+                                    await gameContext.redis.set(`extended_summary_${selectedGame.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
+                                    
+                                    // Update the game data with team stats
+                                    await gameContext.redis.set(`game_${post.id}`, JSON.stringify(selectedGame));
                                 } else {
-                                    console.warn('Extended summary data missing statistics:', extendedSummaryData);
-                                    // Set default stats if data is missing
+                                    console.warn('Failed to fetch extended summary, using default stats');
                                     selectedGame.teamStats = {
                                         home: { R: 0, H: 0, HR: 0, TB: 0, SB: 0, LOB: 0, E: 0, K: 0, SO: 0, BB: 0 },
                                         away: { R: 0, H: 0, HR: 0, TB: 0, SB: 0, LOB: 0, E: 0, K: 0, SO: 0, BB: 0 }
                                     };
+                                    await gameContext.redis.set(`game_${post.id}`, JSON.stringify(selectedGame));
                                 }
-                            } else {
-                                console.error('Failed to fetch initial extended summary:', extendedSummaryResponse.status);
-                                // Set default stats if the request fails
-                                selectedGame.teamStats = {
-                                    home: { R: 0, H: 0, HR: 0, TB: 0, SB: 0, LOB: 0, E: 0, K: 0, SO: 0, BB: 0 },
-                                    away: { R: 0, H: 0, HR: 0, TB: 0, SB: 0, LOB: 0, E: 0, K: 0, SO: 0, BB: 0 }
-                                };
+
+                                ui.showToast('Baseball scorecard created successfully!');
+                            } catch (error) {
+                                console.error('Error setting up game data:', error);
+                                // We can't delete the post, but we can show an error message
+                                ui.showToast(`Failed to set up game data: ${(error as Error).message}`);
+                                throw error;
                             }
 
                             // Navigate to the post

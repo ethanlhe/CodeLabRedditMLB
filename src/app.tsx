@@ -2,11 +2,13 @@ import { Devvit, useState, useAsync, useChannel } from '@devvit/public-api';
 import { renderPreGame } from './phases/pregame.tsx';
 import { renderInGame } from './phases/ingame.tsx';
 import { renderPostGame } from './phases/postgame.tsx';
+import { BoxScoreTab } from './phases/BoxScoreTab.tsx';
 import { GameStateControls } from './ui/components/GameControls.tsx';
 import { Header } from './ui/components/Header.tsx';
 import { GamePhase, GameInfo, Score, GameBoxscore } from './types/game.ts';
 import { setupGameSelectionForm } from './forms/GameSelectionForm.tsx';
 import { parseGameBoxscore, extractTeamStats } from './utils/gameParsers.js';
+import { PlayByPlayTab } from './phases/PlayByPlayTab.tsx';
 
 export function setupBaseballApp() {
     Devvit.configure({
@@ -174,7 +176,6 @@ export function setupBaseballApp() {
                             await context.redis.set(`extended_summary_${storedGame.id}`, JSON.stringify(newExtendedSummaryData));
                             await context.redis.set(`extended_summary_${storedGame.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
                             extendedSummaryData = JSON.stringify(newExtendedSummaryData);
-                            console.log('Fetched extended summary:', JSON.stringify(extendedSummaryData, null, 2));
                         } else {
                             console.error('[Scoreboard] Failed to fetch extended summary:', extendedSummaryResponse.status);
                         }
@@ -185,12 +186,10 @@ export function setupBaseballApp() {
                     }
 
                     const parsedData = JSON.parse(boxscoreData);
-                    console.log('[Scoreboard] Parsed boxscore data:', parsedData);
                     
                     const isGameLive = parsedData.game.status === 'in-progress';
                     const parsedGameInfo = parseGameBoxscore(parsedData.game);
                     
-                    console.log('[Scoreboard] Setting game data:', parsedGameInfo);
                     setIsLive(isGameLive);
 
                     // Add to active games if live
@@ -201,21 +200,54 @@ export function setupBaseballApp() {
                     // After extracting team stats:
                     const homeStats = extractTeamStats(parsedData.game.home.statistics);
                     const awayStats = extractTeamStats(parsedData.game.away.statistics);
-                    console.log('Extracted home teamStats:', homeStats);
-                    console.log('Extracted away teamStats:', awayStats);
 
                     // After fetching and parsing extendedSummaryData:
                     let extendedHomeStats, extendedAwayStats;
                     if (extendedSummaryData) {
                         let parsedExtendedSummary = typeof extendedSummaryData === 'string' ? JSON.parse(extendedSummaryData) : extendedSummaryData;
                         if (parsedExtendedSummary?.game) {
-                            extendedHomeStats = extractTeamStats(parsedExtendedSummary.game?.home?.statistics);
+                            extendedHomeStats =  extractTeamStats(parsedExtendedSummary.game?.home?.statistics);
                             extendedAwayStats = extractTeamStats(parsedExtendedSummary.game?.away?.statistics);
                             parsedGameInfo.teamStats = { home: extendedHomeStats, away: extendedAwayStats };
+                            parsedGameInfo.extendedSummaryData = parsedExtendedSummary;
                         }
                     }
 
-                    return parsedGameInfo;
+                    // Fetch and store play-by-play data for postgame and closed games
+                    let playByPlayData = null;
+                    if (["post", "closed", "final"].includes(parsedGameInfo.status)) {
+                        console.log('[Scoreboard] Entering play-by-play fetch block for postgame/closed/final');
+                        // Use the same API_KEY as above
+                        const API_KEY = await context.settings.get('sportsradar-api-key');
+                        if (!API_KEY) {
+                            throw new Error('SportsRadar API key not configured');
+                        }
+                        // Try to get from Redis first
+                        playByPlayData = await context.redis.get(`pbp_${storedGame.id}`);
+                        const pbpTimestamp = await context.redis.get(`pbp_${storedGame.id}_timestamp`);
+                        if (!playByPlayData || !pbpTimestamp || (Date.now() / 1000 - parseInt(pbpTimestamp)) > 300) {
+                            // Fetch fresh play-by-play data
+                            const pbpResponse = await fetch(
+                                `https://api.sportradar.us/mlb/trial/v8/en/games/${storedGame.id}/pbp.json`,
+                                {
+                                    headers: {
+                                        'accept': 'application/json',
+                                        'x-api-key': API_KEY as string
+                                    }
+                                }
+                            );
+                            if (pbpResponse.ok) {
+                                const pbpJson = await pbpResponse.json();
+                                playByPlayData = JSON.stringify(pbpJson);
+                                await context.redis.set(`pbp_${storedGame.id}`, playByPlayData);
+                                await context.redis.set(`pbp_${storedGame.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
+                            } else {
+                                console.error('[Scoreboard] Failed to fetch play-by-play:', pbpResponse.status);
+                            }
+                        }
+                    }
+
+                    return { ...parsedGameInfo, playByPlayData };
                 } catch (err) {
                     console.error('[Scoreboard] Error loading game data:', err);
                     throw err;
@@ -235,14 +267,11 @@ export function setupBaseballApp() {
                 },
             });
 
-            console.log('[Scoreboard] State:', { gameId, isLive, loading, error, asyncGameData, gameData });
             if (isLive && gameId) {
-                console.log('[Scoreboard] Subscribing to channel:', `game_updates_${gameId}`);
                 channel.subscribe();
             }
 
             if (loading) {
-                console.log('[Scoreboard] Still loading...');
                 return (
                     <vstack padding="medium" gap="medium" alignment="middle center">
                         <text size="large">Loading Baseball Scorecard...</text>
@@ -356,15 +385,14 @@ export function setupBaseballApp() {
                     tabComponent = renderPostGame({ gameInfo: displayGameData as GameInfo });
                 } else if (selectedTab === 'playbyplay') {
                     tabComponent = (
-                        <vstack width="100%" alignment="center middle" padding="large">
-                            <text size="large">Play by Play coming soon!</text>
-                        </vstack>
+                        <PlayByPlayTab playByPlayData={displayGameData.playByPlayData} />
                     );
                 } else if (selectedTab === 'boxscore') {
                     tabComponent = (
-                        <vstack width="100%" alignment="center middle" padding="large">
-                            <text size="large">Box Score coming soon!</text>
-                        </vstack>
+                        <BoxScoreTab 
+                            gameInfo={displayGameData as GameInfo} 
+                            extendedSummaryData={asyncGameData.extendedSummaryData} 
+                        />
                     );
                 } else {
                     tabComponent = (
@@ -382,7 +410,7 @@ export function setupBaseballApp() {
             }
 
             // Before rendering postgame view:
-            console.log('Postgame gameInfo.teamStats:', displayGameData.teamStats);
+
 
             return (
                 <vstack padding="medium" gap="medium" backgroundColor="neutral-background-weak" width="100%" minHeight="100%">

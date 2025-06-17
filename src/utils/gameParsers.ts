@@ -98,3 +98,31 @@ export function parseGameBoxscore(data: GameBoxscore): GameInfo {
     scoring,
   };
 }
+
+// Parse play-by-play data from pbp.json, grouped by half-inning and only at-bat descriptions
+export function parsePlayByPlay(raw: any) {
+  if (!raw || !raw.game || !Array.isArray(raw.game.innings)) return [];
+  const homeTeam = raw.game.home?.name || 'Home';
+  const awayTeam = raw.game.away?.name || 'Away';
+  const result = [];
+  for (const inningObj of raw.game.innings) {
+    if (!inningObj.number || inningObj.number < 1) continue; // skip inning 0 or invalid
+    for (const halfObj of inningObj.halfs || []) {
+      const isTop = halfObj.half === 'T';
+      const team = isTop ? awayTeam : homeTeam;
+      // Only at-bat level events with a description
+      const plays = (halfObj.events || [])
+        .filter((event: any) => event.at_bat && event.at_bat.description)
+        .map((event: any) => ({ description: event.at_bat.description }));
+      if (plays.length > 0) {
+        result.push({
+          inning: inningObj.number,
+          half: halfObj.half,
+          team,
+          plays
+        });
+      }
+    }
+  }
+  return result;
+}
