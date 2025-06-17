@@ -98,26 +98,28 @@ export function BoxScoreTab({ gameInfo, extendedSummaryData }: BoxScoreTabProps)
   // Render team switcher tabs
   const teamTabs = (
     <hstack gap="small" alignment="center middle">
-      <button
-        size='small'
-        appearance={selectedTeam === 'away' ? 'secondary' : 'plain'}
-        onPress={() => setSelectedTeam('away')}
-      >
-        {gameInfo.awayTeam.name}
-      </button>
-      <button
-        size='small'
-        appearance={selectedTeam === 'home' ? 'secondary' : 'plain'}
-        onPress={() => setSelectedTeam('home')}
-      >
-        {gameInfo.homeTeam.name}
-      </button>
+      {(['away', 'home'] as const).map(teamKey => (
+        <hstack
+          key={teamKey}
+          backgroundColor="neutral-background-weak"
+          borderColor="neutral-border-weak"
+          cornerRadius="full"
+        >
+          <button
+            size="small"
+            appearance={selectedTeam === teamKey ? 'secondary' : 'plain'}
+            onPress={() => setSelectedTeam(teamKey)}
+          >
+            {teamKey === 'away' ? gameInfo.awayTeam.name : gameInfo.homeTeam.name}
+          </button>
+        </hstack>
+      ))}
     </hstack>
   );
 
   // Render player stats table
   const renderPlayerStatsTable = (players: PlayerStats[], teamName: string) => (
-    <vstack gap="small" width="100%">
+    <vstack width="100%" maxHeight="320px">
       <text size="medium" weight="bold">{teamName} Hitting</text>
       {/* Header */}
       <hstack gap="small" padding="small" backgroundColor="neutral-background-weak">
@@ -156,15 +158,15 @@ export function BoxScoreTab({ gameInfo, extendedSummaryData }: BoxScoreTabProps)
 
   // Show only the selected team's table with pagination
   return (
-    <vstack gap="medium" width="100%" minHeight="400px">
-      <hstack alignment="end middle" gap="small" backgroundColor="neutral-background-weak">
+    <vstack width="100%" height="380px">
+      {renderPlayerStatsTable(currentItems, selectedTeam === 'away' ? gameInfo.awayTeam.name : gameInfo.homeTeam.name)}
+      <spacer grow />
+      <hstack alignment="end middle" padding="small" gap="small" backgroundColor="neutral-background-weak">
         {teamTabs}
         <spacer grow />
-        <button size='small' onPress={toPrevPage} icon="left" disabled={isFirstPage} />
-        <text size="small" weight="bold">{currentPage + 1} / {pagesCount}</text>
-        <button size='small' onPress={toNextPage} icon="right" disabled={isLastPage} />
+        <button size='small' onPress={toPrevPage} icon="up" disabled={isFirstPage} />
+        <button size='small' onPress={toNextPage} icon="down" disabled={isLastPage} />
       </hstack>
-      {renderPlayerStatsTable(currentItems, selectedTeam === 'away' ? gameInfo.awayTeam.name : gameInfo.homeTeam.name)}
     </vstack>
   );
 } 
