@@ -86,7 +86,7 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
         </vstack>
       </hstack>
       <spacer size="small" />
-      <hstack width="100%" backgroundColor="#E0E1E1" height="1px" />
+      <hstack width="100%" backgroundColor="neutral-border-weak" height="1px" />
       <spacer size="small" />
       {/* Inning-by-inning scoring */}
       {gameInfo.scoring ? (
@@ -114,7 +114,7 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
             <text size="small" minWidth={7}>{String(gameInfo.teamStats?.away.H ?? '')}</text>
             <text size="small" minWidth={2}>{String(gameInfo.teamStats?.away.E ?? '')}</text>
           </hstack>
-          <hstack width="100%" backgroundColor="#E0E1E1" height="1px" />
+          <hstack width="100%" backgroundColor="neutral-border-weak" height="1px" />
           {/* Home team row */}
           <hstack gap="medium" alignment="center middle">
             <text size="small" weight="bold">{gameInfo.homeTeam.abbreviation ?? ''}</text>
@@ -130,7 +130,7 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
         </vstack>
       ) : null}
       <spacer size="small" />
-      <hstack width="100%" backgroundColor="#E0E1E1" height="1px" />
+      <hstack width="100%" backgroundColor="neutral-border" height="1px" />
       <spacer size="medium" />
       {/* Team Stats Section */}
       <vstack gap="small" width="100%">
@@ -153,32 +153,32 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
         <hstack gap="medium" alignment="center middle">
           <text size="small" weight="bold">{gameInfo.awayTeam.abbreviation}</text>
           <spacer grow />
-          <text size="small" minWidth={8}>{gameInfo.teamStats?.away.R}</text>
-          <text size="small" minWidth={8}>{gameInfo.teamStats?.away.H}</text>
-          <text size="small" minWidth={8}>{gameInfo.teamStats?.away.HR}</text>
-          <text size="small" minWidth={8}>{gameInfo.teamStats?.away.TB}</text>
-          <text size="small" minWidth={8}>{gameInfo.teamStats?.away.SB}</text>
-          <text size="small" minWidth={11}>{gameInfo.teamStats?.away.LOB}</text>
-          <text size="small" minWidth={8}>{gameInfo.teamStats?.away.E}</text>
-          <text size="small" minWidth={8}>{gameInfo.teamStats?.away.K}</text>
-          <text size="small" minWidth={8}>{gameInfo.teamStats?.away.SO}</text>
-          <text size="small" minWidth={2}>{gameInfo.teamStats?.away.BB}</text>
+          <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.away.R}</text>
+          <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.away.H}</text>
+          <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.away.HR}</text>
+          <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.away.TB}</text>
+          <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.away.SB}</text>
+          <text size="small" color="neutral-content-strong" minWidth={11}>{gameInfo.teamStats?.away.LOB}</text>
+          <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.away.E}</text>
+          <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.away.K}</text>
+          <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.away.SO}</text>
+          <text size="small" color="neutral-content-strong" minWidth={2}>{gameInfo.teamStats?.away.BB}</text>
         </hstack>
-        <hstack width="100%" backgroundColor="#E0E1E1" height="1px" />
+        <hstack width="100%" backgroundColor="neutral-border-weak" height="1px" />
         {/* Home team row */}
         <hstack gap="medium" alignment="center middle">
           <text size="small" weight="bold">{gameInfo.homeTeam.abbreviation}</text>
           <spacer grow />
-          <text size="small" minWidth={8}>{gameInfo.teamStats?.home.R}</text>
-          <text size="small" minWidth={8}>{gameInfo.teamStats?.home.H}</text>
-          <text size="small" minWidth={8}>{gameInfo.teamStats?.home.HR}</text>
-          <text size="small" minWidth={8}>{gameInfo.teamStats?.home.TB}</text>
-          <text size="small" minWidth={8}>{gameInfo.teamStats?.home.SB}</text>
-          <text size="small" minWidth={11}>{gameInfo.teamStats?.home.LOB}</text>
-          <text size="small" minWidth={8}>{gameInfo.teamStats?.home.E}</text>
-          <text size="small" minWidth={8}>{gameInfo.teamStats?.home.K}</text>
-          <text size="small" minWidth={8}>{gameInfo.teamStats?.home.SO}</text>
-          <text size="small" minWidth={2}>{gameInfo.teamStats?.home.BB}</text>
+          <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.home.R}</text>
+          <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.home.H}</text>
+          <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.home.HR}</text>
+          <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.home.TB}</text>
+          <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.home.SB}</text>
+          <text size="small" color="neutral-content-strong" minWidth={11}>{gameInfo.teamStats?.home.LOB}</text>
+          <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.home.E}</text>
+          <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.home.K}</text>
+          <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.home.SO}</text>
+          <text size="small" color="neutral-content-strong" minWidth={2}>{gameInfo.teamStats?.home.BB}</text>
         </hstack>
       </vstack>
     </vstack>

@@ -39,7 +39,7 @@ export function Header({ gameInfo, phase }: HeaderProps) {
         {dateNoYear} • {gameInfo.location}
       </text>
       <hstack padding="xsmall"/>
-      <hstack width="100%" backgroundColor="#E0E1E1" height="1px" />
+      <hstack width="100%" backgroundColor="neutral-border" height="1px" />
     </vstack>
   );
 }
