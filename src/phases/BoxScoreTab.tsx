@@ -164,8 +164,8 @@ export function BoxScoreTab({ gameInfo, extendedSummaryData }: BoxScoreTabProps)
       <hstack alignment="end middle" padding="small" gap="small" backgroundColor="neutral-background-weak">
         {teamTabs}
         <spacer grow />
-        <button size='small' onPress={toPrevPage} icon="up" disabled={isFirstPage} />
-        <button size='small' onPress={toNextPage} icon="down" disabled={isLastPage} />
+        <button onPress={toPrevPage} icon="up" disabled={isFirstPage} />
+        <button onPress={toNextPage} icon="down" disabled={isLastPage} />
       </hstack>
     </vstack>
   );

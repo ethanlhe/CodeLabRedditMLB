@@ -1,13 +1,14 @@
 import { Devvit, useState, useAsync, useChannel } from '@devvit/public-api';
 import { renderPreGame } from './phases/pregame.tsx';
 import { renderInGame } from './phases/ingame.tsx';
-import { renderPostGame, PlayByPlayTab } from './phases/postgame.tsx';
+import { renderPostGame } from './phases/postgame.tsx';
 import { BoxScoreTab } from './phases/BoxScoreTab.tsx';
 import { GameStateControls } from './ui/components/GameControls.tsx';
 import { Header } from './ui/components/Header.tsx';
 import { GamePhase, GameInfo, Score, GameBoxscore } from './types/game.ts';
 import { setupGameSelectionForm } from './forms/GameSelectionForm.tsx';
 import { parseGameBoxscore, extractTeamStats } from './utils/gameParsers.js';
+import { PlayByPlayTab } from './phases/PlayByPlayTab.tsx';
 
 export function setupBaseballApp() {
     Devvit.configure({
