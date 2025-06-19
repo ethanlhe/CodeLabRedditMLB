@@ -6,7 +6,8 @@ import { GameStateControls } from './ui/components/GameControls.tsx';
 import { Header } from './ui/components/Header.tsx';
 import { GamePhase, GameInfo, Score, GameBoxscore } from './types/game.ts';
 import { setupGameSelectionForm, parseGameBoxscore } from './forms/GameSelectionForm.tsx';
-import * as chrono from 'chrono-node';
+import * as chrono from 'chrono-node';import { usePagination } from '@devvit/kit';
+
 
 export function setupBaseballApp() {
     Devvit.configure({
@@ -82,7 +83,7 @@ export function setupBaseballApp() {
     });
 
     Devvit.addCustomPostType({
-        name: 'Baseball Scorecard',
+        name: 'Baseball Scorecard - Test!!',
         height: 'tall',
         render: (context) => {
             const [isLive, setIsLive] = useState(false);
@@ -250,4 +251,26 @@ export function setupBaseballApp() {
             );
         }
     });
-} 
+
+    Devvit.addTrigger({
+        event: "PostDelete",
+        onEvent: async (event, context) => {
+            const post = await context.reddit.getPostById(event.postId);
+            await post.remove();
+        },
+    });
+
+    Devvit.addMenuItem({
+        label: "Remove Scoreboard Post",
+        location: "post",
+        forUserType: "moderator",
+        onPress: async (_event, context) => {
+            const postId = context.postId;
+            if (!postId) {
+                throw new Error("No postId found in context.");
+            }
+            const post = await context.reddit.getPostById(postId);
+            await post.remove();
+        },
+    });
+}

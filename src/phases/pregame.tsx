@@ -1,6 +1,7 @@
 import { Devvit, useState, useAsync, FormOnSubmitEvent } from '@devvit/public-api';
 import { MLB_LOGOS } from '../assets/logos/mlb.ts';
 import { GameInfo, Player } from '../types/game.ts';
+import { usePagination } from '@devvit/kit';
 import * as chrono from 'chrono-node';
 import { DateTime } from 'luxon';
 
@@ -27,11 +28,15 @@ interface PreGameProps {
   }>;
   homePlayers: Player[];
   awayPlayers: Player[];
-  context: any; // Add context to props
+  context: Devvit.Context;
 }
 
 export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlayers, awayPlayers, context }: PreGameProps) {
-  console.log(" Home Probable Pitcher", gameInfo.homeTeam.probablePitchers);
+  console.log(" Home Probable Pitcher", gameInfo.homeTeam.probablePitchers);  const safeHomePlayers = Array.isArray(homePlayers) ? homePlayers : [];
+  const safeAwayPlayers = Array.isArray(awayPlayers) ? awayPlayers : [];
+
+  const homePagination = usePagination(context, safeHomePlayers, 5);
+  const awayPagination = usePagination(context, safeAwayPlayers, 6);
 
   if (!gameInfo || !gameInfo.awayTeam || !gameInfo.homeTeam) {
     return <text color="red">No game data available (missing team info).</text>;
@@ -49,6 +54,13 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
   const [hasVoted, setHasVoted] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'summary' | 'lineups'>('summary');
   const [selectedLineupTeam, setSelectedLineupTeam] = useState<'home' | 'away'>('home');
+
+  const {
+    currentPage,
+    currentItems,
+    toNextPage,
+    toPrevPage
+  } = selectedLineupTeam === 'home' ? homePagination : awayPagination;
   const [subscriptionState, setSubscriptionState] = useState<CountdownSubscriptionState>(CountdownSubscriptionState.AVAILABLE);
 
   // Check if user is already subscribed and if match is too close
@@ -323,6 +335,70 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
         </vstack>
       )
       }
+        <>
+          <hstack width="100%" gap="small" alignment="center middle">
+            <button
+              appearance={selectedLineupTeam === 'home' ? 'primary' : 'secondary'}
+              size="medium"
+              onPress={() => setSelectedLineupTeam('home')}
+            >
+              {gameInfo.homeTeam.name}
+            </button>
+            <button
+              appearance={selectedLineupTeam === 'away' ? 'primary' : 'secondary'}
+              size="medium"
+              onPress={() => setSelectedLineupTeam('away')}
+            >
+              {gameInfo.awayTeam.name}
+            </button>
+          </hstack>
+
+          // Home Players Section
+          {selectedLineupTeam === 'home' && homePlayers && homePlayers.length > 0 && (
+            <vstack width="100%" gap="small" padding="small">
+              <text size="small" weight="bold" color="#576F76">Players</text>
+              {/* Rendering items for the current page */}
+              <vstack gap="small" padding="small" minHeight="150px">
+                {currentItems.map((player, idx) => (
+                <hstack key={String(idx)} gap="small" alignment="start middle">
+                  <text size="small" weight="bold" color="#000000">{player.first_name} {player.last_name}</text>
+                  <text size="small" color="#000000">{player.primary_position}</text>
+                </hstack>
+              ))}
+              </vstack>
+
+              {/* Rendering pagination controls */}
+              <hstack alignment="middle center" gap="small">
+                <button onPress={toPrevPage} icon="up"/>
+                <text>{currentPage}</text>
+                <button onPress={toNextPage} icon="down"/>
+              </hstack>
+            </vstack>
+          )}
+
+          // Away Players Section
+          {selectedLineupTeam === 'away' && awayPlayers && awayPlayers.length > 0 && (
+            <vstack width="100%" gap="small" padding="small">
+              <text size="small" weight="bold" color="#576F76">Players</text>
+              {/* Rendering items for the current page */}
+              <vstack gap="small" padding="small" minHeight="150px">
+                {currentItems.map((player, idx) => (
+                <hstack key={String(idx)} gap="small" alignment="start middle">
+                  <text size="small" weight="bold" color="#000000">{player.first_name} {player.last_name}</text>
+                  <text size="small" color="#000000">{player.primary_position}</text>
+                </hstack>
+              ))}
+              </vstack>
+
+              {/* Rendering pagination controls */}
+              <hstack alignment="middle center" gap="small">
+                <button onPress={toPrevPage} icon="up"/>
+                <text>{currentPage}</text>
+                <button onPress={toNextPage} icon="down"/>
+              </hstack>
+            </vstack>
+          )} 
+        </>
 
     </vstack >
   );
