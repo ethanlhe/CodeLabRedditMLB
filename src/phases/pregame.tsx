@@ -1,7 +1,6 @@
 import { Devvit, useState, useAsync, FormOnSubmitEvent } from '@devvit/public-api';
 import { MLB_LOGOS } from '../assets/logos/mlb.ts';
 import { GameInfo, Player } from '../types/game.ts';
-import { usePagination } from '@devvit/kit';
 import * as chrono from 'chrono-node';
 import { DateTime } from 'luxon';
 
@@ -31,13 +30,33 @@ interface PreGameProps {
   context: any;
 }
 
+// Pagination hook for vertical (up/down) navigation
+function useVerticalPagination<ItemType>(items: ItemType[], itemsPerPage: number) {
+  const [currentPage, setCurrentPage] = useState(0);
+  const pagesCount = Math.ceil(items.length / itemsPerPage);
+  const isFirstPage = currentPage === 0;
+  const isLastPage = currentPage === pagesCount - 1;
+  return {
+    currentPage,
+    pagesCount,
+    currentItems: items.slice(
+      currentPage * itemsPerPage,
+      currentPage * itemsPerPage + itemsPerPage
+    ),
+    isFirstPage,
+    isLastPage,
+    toPrevPage: isFirstPage ? undefined : () => setCurrentPage(currentPage - 1),
+    toNextPage: isLastPage ? undefined : () => setCurrentPage(currentPage + 1),
+  };
+}
+
 export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlayers, awayPlayers, context }: PreGameProps) {
   console.log(" Home Probable Pitcher", gameInfo.homeTeam.probablePitchers);
   const safeHomePlayers = Array.isArray(homePlayers) ? homePlayers : [];
   const safeAwayPlayers = Array.isArray(awayPlayers) ? awayPlayers : [];
 
-  const homePagination = usePagination(context, safeHomePlayers, 10);
-  const awayPagination = usePagination(context, safeAwayPlayers, 10);
+  const homePagination = useVerticalPagination(safeHomePlayers, 10);
+  const awayPagination = useVerticalPagination(safeAwayPlayers, 10);
 
   if (!gameInfo || !gameInfo.awayTeam || !gameInfo.homeTeam) {
     return <text color="red">No game data available (missing team info).</text>;
@@ -317,7 +336,7 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
             <text size="small" weight="bold" color="#000000" width="45px">SLP</text>
           </hstack>
           {/* Table Rows */}
-          {(selectedLineupTeam === 'home' ? homePagination : awayPagination).currentItems.map((player, idx) => (
+          {(selectedLineupTeam === 'home' ? homePagination : awayPagination).currentItems.map((player: Player, idx: number) => (
             <hstack key={String(idx)} width="100%" gap="medium" alignment="start middle" padding="xsmall" backgroundColor={idx % 2 === 0 ? "#FAFAFA" : "#FFFFFF"}>
               <hstack gap="small" width="120px">
                 <text size="small" color="#000000">{player.first_name[0]}. {player.last_name}</text>
