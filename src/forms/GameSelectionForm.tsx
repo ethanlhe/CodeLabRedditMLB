@@ -27,25 +27,25 @@ export function setupGameSelectionForm() {
             if (!API_KEY) {
                 throw new Error('SportsRadar API key not configured. Please set it in the app settings.');
             }
-            
+
             const { date } = event.values;
             const { ui } = context;
 
             try {
                 // Parse the date into components
                 const [year, month, day] = date.split('/');
-                
+
                 // Validate date format
                 if (!year || !month || !day) {
                     throw new Error('Invalid date format. Please use YYYY/MM/DD');
                 }
-                
+
                 const cacheKey = `schedule_${year}_${month}_${day}`;
 
                 // Try to get cached data first
                 const cachedData = await context.redis.get(cacheKey);
                 let data;
-                
+
                 if (cachedData) {
                     console.log('Using cached schedule data');
                     data = JSON.parse(cachedData);
@@ -66,19 +66,38 @@ export function setupGameSelectionForm() {
                     }
 
                     data = await response.json();
-                    
+
                     if (!data || !data.games) {
                         throw new Error('Invalid response format from API');
                     }
-                    
+
                     // Cache the data
                     await context.redis.set(cacheKey, JSON.stringify(data));
                 }
-                
+
+                const lineup_response = await fetch(
+                    `https://api.sportradar.us/mlb/trial/v8/en/games/${year}/${month}/${day}/schedule.json`,
+                    {
+                        headers: {
+                            'accept': 'application/json',
+                            'x-api-key': API_KEY as string
+                        }
+                    }
+                );
+                if (lineup_response.ok) {
+                    const lineupData = await lineup_response.json();
+                    console.log("Lineup Data:", JSON.stringify(lineupData, null, 2));
+                    // Store the extended summary data in Redis
+                    //await gameContext.redis.set(`extended_summary_${selectedGame.id}`, JSON.stringify(extendedsumData));
+                } else {
+                    console.error('Failed to fetch lineup data:', lineup_response.status);
+                }
+
                 if (!data.games || data.games.length === 0) {
                     ui.showToast('No games found for the selected date');
                     return;
                 }
+
 
                 // Create game selection form with the fetched games
                 const gameSelectionForm = Devvit.createForm(
@@ -106,11 +125,11 @@ export function setupGameSelectionForm() {
                     async (gameEvent, gameContext) => {
                         const { reddit, ui } = gameContext;
                         const { gameId, title } = gameEvent.values;
-                        
+
                         try {
                             // Extract the game ID from the array if it's in that format
                             const actualGameId = Array.isArray(gameId) ? gameId[0] : gameId;
-                            
+
                             // Store the game data in our global state
                             let selectedGame = data.games.find((game: any) => game.id === actualGameId);
                             

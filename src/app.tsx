@@ -1,4 +1,4 @@
-import { Devvit, useState, useAsync, useChannel } from '@devvit/public-api';
+import { Devvit, useState, useAsync, useChannel, FormOnSubmitEvent } from '@devvit/public-api';
 import { renderPreGame } from './phases/pregame.tsx';
 import { renderInGame } from './phases/ingame.tsx';
 import { renderPostGame } from './phases/postgame.tsx';
@@ -9,6 +9,7 @@ import { GamePhase, GameInfo, Score, GameBoxscore } from './types/game.ts';
 import { setupGameSelectionForm } from './forms/GameSelectionForm.tsx';
 import { parseGameBoxscore, extractTeamStats } from './utils/gameParsers.js';
 import { PlayByPlayTab } from './phases/PlayByPlayTab.tsx';
+import * as chrono from 'chrono-node';
 
 export function setupBaseballApp() {
     Devvit.configure({
@@ -27,14 +28,14 @@ export function setupBaseballApp() {
             try {
                 // Get all active game posts from Redis
                 const activeGames = await context.redis.hkeys('active_games');
-                
+
                 for (const gameId of activeGames) {
                     const gameData = await context.redis.get(`game_${gameId}`);
                     if (!gameData) continue;
 
                     const game = JSON.parse(gameData);
                     const boxscoreData = await context.redis.get(`boxscore_${game.id}`);
-                    
+
                     if (boxscoreData) {
                         const parsedData = JSON.parse(boxscoreData);
                         if (parsedData.game.status === 'in-progress') {
@@ -59,7 +60,7 @@ export function setupBaseballApp() {
                                 const newData = await response.json();
                                 await context.redis.set(`boxscore_${game.id}`, JSON.stringify(newData));
                                 await context.redis.set(`boxscore_${game.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
-                                
+
                                 // Broadcast update to all clients
                                 context.realtime.send(`game_updates_${game.id}`, newData);
                             }
@@ -82,9 +83,9 @@ export function setupBaseballApp() {
             });
         }
     });
-      
+
     Devvit.addCustomPostType({
-        name: 'Baseball Scorecard',
+        name: 'Baseball Scorecard - Test!!',
         height: 'tall',
         render: (context) => {
             const [isLive, setIsLive] = useState<boolean>(false);
@@ -302,6 +303,35 @@ export function setupBaseballApp() {
                 );
             }
 
+            async function voteForTeam(team: string) {
+                const currentUser = await context.reddit.getCurrentUser();
+                const userId = currentUser?.id;
+                const userKey = `poll:${team}:user:${userId}`;
+                const hasVoted = await context.redis.get(userKey);
+                if (!hasVoted) {
+                    await context.redis.set(userKey, '1');
+                    const txn = await context.redis.watch(`poll:${team}`);
+                    await txn.multi();
+                    await txn.incrBy(`poll:${team}`, 1);
+                    await txn.exec();
+                }
+
+            }
+
+            async function getPollResults(homeTeam: string, awayTeam: string) {
+                const [home, away] = await context.redis.mGet([`poll:${homeTeam}`, `poll:${awayTeam}`]);
+                const homeVotes = parseInt(home ?? '0', 10);
+                const awayVotes = parseInt(away ?? '0', 10);
+                const total = homeVotes + awayVotes;
+                return {
+                    home: homeVotes,
+                    away: awayVotes,
+                    total,
+                    homePct: total ? Math.round((homeVotes / total) * 100) : 0,
+                    awayPct: total ? Math.round((awayVotes / total) * 100) : 0,
+                };
+            }
+
             // Determine phase and render appropriate component
             let phase: GamePhase;
             if (displayGameData.status === 'scheduled') {
@@ -344,7 +374,22 @@ export function setupBaseballApp() {
             let tabComponent: JSX.Element;
             if (phase === 'pre') {
                 if (selectedTab === 'summary') {
-                    tabComponent = renderPreGame({ gameInfo: displayGameData as GameInfo });
+                    const { data: homePlayers } = useAsync(async () => {
+                        const playersStr = await context.redis.get(`players_home_${context.postId}`);
+                        return playersStr ? JSON.parse(playersStr) : [];
+                    });
+                    const { data: awayPlayers } = useAsync(async () => {
+                        const playersStr2 = await context.redis.get(`players_away_${context.postId}`);
+                        return playersStr2 ? JSON.parse(playersStr2) : [];
+                    });
+                    tabComponent = renderPreGame({ 
+                        gameInfo: displayGameData as GameInfo,
+                        voteForTeam,
+                        getPollResults,
+                        homePlayers: homePlayers || [],
+                        awayPlayers: awayPlayers || [],
+                        context
+                    });
                 } else if (selectedTab === 'lineups') {
                     tabComponent = (
                         <vstack width="100%" alignment="center middle" padding="large">
@@ -413,7 +458,7 @@ export function setupBaseballApp() {
 
 
             return (
-                <vstack padding="medium" gap="medium" backgroundColor="neutral-background-weak" width="100%" minHeight="100%">
+                <vstack padding="small" gap="small" backgroundColor="#F9FAFA" width="100%" minHeight="100%">
                     <Header gameInfo={displayGameData as GameInfo} phase={phase} />
                     {/* Tab Bar */}
                     <hstack gap="small" alignment="center middle">
@@ -436,4 +481,26 @@ export function setupBaseballApp() {
             );
         }
     });
-} 
+
+    Devvit.addTrigger({
+        event: "PostDelete",
+        onEvent: async (event, context) => {
+            const post = await context.reddit.getPostById(event.postId);
+            await post.remove();
+        },
+    });
+
+    Devvit.addMenuItem({
+        label: "Remove Scoreboard Post",
+        location: "post",
+        forUserType: "moderator",
+        onPress: async (_event, context) => {
+            const postId = context.postId;
+            if (!postId) {
+                throw new Error("No postId found in context.");
+            }
+            const post = await context.reddit.getPostById(postId);
+            await post.remove();
+        },
+    });
+}

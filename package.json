@@ -6,9 +6,14 @@
   "type": "module",
   "dependencies": {
     "@api/sportradar-baseball": "file:.api/apis/sportradar-baseball",
-    "@devvit/public-api": "0.11.15"
+    "@devvit/kit": "^1.1.4",
+    "@devvit/public-api": "^0.11.15",
+    "chrono-node": "^2.8.1",
+    "devvit": "^0.11.15",
+    "luxon": "^3.6.1"
   },
   "devDependencies": {
+    "@types/luxon": "^3.6.2",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "typescript": "5.8.3"

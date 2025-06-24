@@ -9,8 +9,11 @@ interface HeaderProps {
 export function Header({ gameInfo, phase }: HeaderProps) {
   // Extract year from date string (e.g., "Thursday, May 22, 2025")
   const year = gameInfo.date?.split(', ').pop()?.split(' ').pop() ?? '';
-  // Remove year from date for display
-  const dateNoYear = gameInfo.date?.replace(/,? \d{4}$/, '') ?? '';
+  // Format date to show only month and day
+  const dateNoYear = gameInfo.date?.split(', ')[1]?.split(',')[0] ?? '';
+  // Format time with timezone
+  const timeWithZone = gameInfo.currentTime ? `${gameInfo.currentTime} ${gameInfo.timezone || 'ET'}` : '';
+
   return (
     <vstack width="100%" gap="none" padding="none">
       <hstack width="100%" backgroundColor="neutral-background-weak" alignment="start middle">
@@ -34,6 +37,7 @@ export function Header({ gameInfo, phase }: HeaderProps) {
         {phase === 'post' && (
           <text size="small" color="#888">Final</text>
         )}
+        <text size="small" weight="bold" color="#576F76">{timeWithZone}</text>
       </hstack>
       <text size="small" color="#888" alignment="start">
         {dateNoYear} • {gameInfo.location}

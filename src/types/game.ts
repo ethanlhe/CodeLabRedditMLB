@@ -16,10 +16,11 @@ export interface ProbablePitchers {
   [key: string]: string | null;
 }
 
-export interface WeatherInfo {
-  condition: string;
-  temp: number;
-  [key: string]: string | number;
+export interface Player {
+  firstName: string;
+  lastName: string;
+  primaryPosition: string;
+  [key: string]: string;
 }
 
 export interface TeamStats {
@@ -33,6 +34,12 @@ export interface TeamStats {
   K: number;
   SO: number;
   BB: number;
+}
+
+export interface WeatherInfo {
+  condition: string;
+  temp: number;
+  [key: string]: string | number;
 }
 
 export interface InningScore {
@@ -51,6 +58,7 @@ export interface GameInfo {
   homeTeam: TeamInfo;
   awayTeam: TeamInfo;
   currentTime: string;
+  timezone: string;
   status: string;
   probablePitchers: ProbablePitchers | null;
   weather: WeatherInfo | null;
@@ -90,11 +98,4 @@ export interface GameBoxscore {
     away?: { full_name: string };
     [key: string]: { full_name: string } | undefined;
   };
-  weather?: {
-    condition: string;
-    temp: number;
-    [key: string]: string | number;
-  };
-  broadcasts?: Array<{ network: string; [key: string]: string }>;
-  [key: string]: any;
 }
