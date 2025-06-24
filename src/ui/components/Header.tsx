@@ -37,7 +37,7 @@ export function Header({ gameInfo, phase }: HeaderProps) {
         {phase === 'post' && (
           <text size="small" color="#888">Final</text>
         )}
-        <text size="small" weight="bold" color="#576F76">{timeWithZone}</text>
+        {/* <text size="small" weight="bold" color="#576F76">{timeWithZone}</text> */}
       </hstack>
       <text size="small" color="#888" alignment="start">
         {dateNoYear} • {gameInfo.location}

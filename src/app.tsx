@@ -458,7 +458,7 @@ export function setupBaseballApp() {
 
 
             return (
-                <vstack padding="small" gap="small" backgroundColor="#F9FAFA" width="100%" minHeight="100%">
+                <vstack padding="small" gap="small" backgroundColor="neutral-background-weak" width="100%" minHeight="100%">
                     <Header gameInfo={displayGameData as GameInfo} phase={phase} />
                     {/* Tab Bar */}
                     <hstack gap="small" alignment="center middle">
