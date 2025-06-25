@@ -1,14 +1,17 @@
 import { Devvit, useState, useAsync, useChannel, FormOnSubmitEvent } from '@devvit/public-api';
-import { renderPreGame } from './phases/pregame.tsx';
-import { renderInGame } from './phases/ingame.tsx';
-import { renderPostGame } from './phases/postgame.tsx';
-import { BoxScoreTab } from './phases/BoxScoreTab.tsx';
+import { renderPreGame } from './phases/pregame/pregame.tsx';
+import { renderInGame } from './phases/livegame/ingame.tsx';
+import { renderPostGame } from './phases/postgame/postgame.tsx';
+import { BoxScoreTab } from './phases/postgame/BoxScoreTab.tsx';
+import { LiveBoxScoreTab } from './phases/livegame/LiveBoxScoreTab.tsx';
 import { GameStateControls } from './ui/components/GameControls.tsx';
 import { Header } from './ui/components/Header.tsx';
 import { GamePhase, GameInfo, Score, GameBoxscore } from './types/game.ts';
 import { setupGameSelectionForm } from './forms/GameSelectionForm.tsx';
 import { parseGameBoxscore, extractTeamStats } from './utils/gameParsers.js';
-import { PlayByPlayTab } from './phases/PlayByPlayTab.tsx';
+import { PlayByPlayTab } from './phases/postgame/PlayByPlayTab.tsx';
+import { LivePlayByPlayTab } from './phases/livegame/LivePlayByPlayTab.tsx';
+import { LineupsTab } from './phases/pregame/LineupsTab.tsx';
 import * as chrono from 'chrono-node';
 
 export function setupBaseballApp() {
@@ -373,15 +376,17 @@ export function setupBaseballApp() {
             // Tab content switch
             let tabComponent: JSX.Element;
             if (phase === 'pre') {
+                // Load players data for both summary and lineups tabs
+                const { data: homePlayers } = useAsync(async () => {
+                    const playersStr = await context.redis.get(`players_home_${context.postId}`);
+                    return playersStr ? JSON.parse(playersStr) : [];
+                });
+                const { data: awayPlayers } = useAsync(async () => {
+                    const playersStr2 = await context.redis.get(`players_away_${context.postId}`);
+                    return playersStr2 ? JSON.parse(playersStr2) : [];
+                });
+
                 if (selectedTab === 'summary') {
-                    const { data: homePlayers } = useAsync(async () => {
-                        const playersStr = await context.redis.get(`players_home_${context.postId}`);
-                        return playersStr ? JSON.parse(playersStr) : [];
-                    });
-                    const { data: awayPlayers } = useAsync(async () => {
-                        const playersStr2 = await context.redis.get(`players_away_${context.postId}`);
-                        return playersStr2 ? JSON.parse(playersStr2) : [];
-                    });
                     tabComponent = renderPreGame({ 
                         gameInfo: displayGameData as GameInfo,
                         voteForTeam,
@@ -392,9 +397,11 @@ export function setupBaseballApp() {
                     });
                 } else if (selectedTab === 'lineups') {
                     tabComponent = (
-                        <vstack width="100%" alignment="center middle" padding="large">
-                            <text size="large">Lineups coming soon!</text>
-                        </vstack>
+                        <LineupsTab 
+                            gameInfo={displayGameData as GameInfo} 
+                            homePlayers={homePlayers || []}
+                            awayPlayers={awayPlayers || []}
+                        />
                     );
                 } else {
                     tabComponent = (
@@ -408,15 +415,18 @@ export function setupBaseballApp() {
                     tabComponent = renderInGame({ gameInfo: displayGameData as GameInfo });
                 } else if (selectedTab === 'allplays') {
                     tabComponent = (
-                        <vstack width="100%" alignment="center middle" padding="large">
-                            <text size="large">All Plays coming soon!</text>
-                        </vstack>
+                        <LivePlayByPlayTab 
+                            playByPlayData={displayGameData.playByPlayData} 
+                            gameId={displayGameData.id}
+                        />
                     );
                 } else if (selectedTab === 'boxscore') {
                     tabComponent = (
-                        <vstack width="100%" alignment="center middle" padding="large">
-                            <text size="large">Box Score coming soon!</text>
-                        </vstack>
+                        <LiveBoxScoreTab 
+                            gameInfo={displayGameData as GameInfo} 
+                            extendedSummaryData={asyncGameData.extendedSummaryData}
+                            gameId={displayGameData.id}
+                        />
                     );
                 } else {
                     tabComponent = (

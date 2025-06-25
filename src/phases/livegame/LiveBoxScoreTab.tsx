@@ -1,9 +1,10 @@
-import { Devvit, useState } from '@devvit/public-api';
-import { GameInfo } from '../types/game.ts';
+import { Devvit, useState, useChannel } from '@devvit/public-api';
+import { GameInfo } from '../../types/game.ts';
 
-interface BoxScoreTabProps {
+interface LiveBoxScoreTabProps {
   gameInfo: GameInfo;
   extendedSummaryData: any;
+  gameId: string;
 }
 
 interface PlayerStats {
@@ -42,14 +43,30 @@ function useVerticalPagination<ItemType>(items: ItemType[], itemsPerPage: number
   };
 }
 
-export function BoxScoreTab({ gameInfo, extendedSummaryData }: BoxScoreTabProps) {
-  if (!extendedSummaryData) {
+export function LiveBoxScoreTab({ gameInfo, extendedSummaryData, gameId }: LiveBoxScoreTabProps) {
+  const [liveData, setLiveData] = useState(extendedSummaryData);
+
+  // Set up realtime updates for live games
+  const channel = useChannel({
+    name: `game_updates_${gameId}`,
+    onMessage: (updatedData: any) => {
+      if (updatedData?.game) {
+        console.log('[LiveBoxScoreTab] Received game update:', updatedData);
+        setLiveData(updatedData);
+      }
+    },
+  });
+
+  // Subscribe to live updates
+  channel.subscribe();
+
+  if (!liveData) {
     return <text color="red">No boxscore data available.</text>;
   }
 
   // Extract player stats from extended summary data
-  const homePlayers = extendedSummaryData.game?.home?.players || [];
-  const awayPlayers = extendedSummaryData.game?.away?.players || [];
+  const homePlayers = liveData.game?.home?.players || [];
+  const awayPlayers = liveData.game?.away?.players || [];
 
   // Helper function to format decimal numbers
   const formatDecimal = (num: number): string => {

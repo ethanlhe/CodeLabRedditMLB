@@ -1,22 +1,51 @@
-import { Devvit, useState } from '@devvit/public-api';
-import { parsePlayByPlay } from '../utils/gameParsers.js';
+import { Devvit, useState, useChannel } from '@devvit/public-api';
+import { parsePlayByPlay } from '../../utils/gameParsers.js';
 
-export function PlayByPlayTab({ playByPlayData }: { playByPlayData: string | null }) {
-  if (!playByPlayData) {
+interface LivePlayByPlayTabProps {
+  playByPlayData: string | null;
+  gameId: string;
+}
+
+export function LivePlayByPlayTab({ playByPlayData, gameId }: LivePlayByPlayTabProps) {
+  const [livePlayByPlayData, setLivePlayByPlayData] = useState(playByPlayData);
+
+  // Set up realtime updates for live games
+  const channel = useChannel({
+    name: `game_updates_${gameId}`,
+    onMessage: (updatedData: any) => {
+      if (updatedData?.game) {
+        console.log('[LivePlayByPlayTab] Received game update:', updatedData);
+        // For live games, we might need to fetch fresh play-by-play data
+        // This would typically be done by the parent component
+        // For now, we'll just update the existing data if it's provided
+        if (updatedData.playByPlayData) {
+          setLivePlayByPlayData(updatedData.playByPlayData);
+        }
+      }
+    },
+  });
+
+  // Subscribe to live updates
+  channel.subscribe();
+
+  if (!livePlayByPlayData) {
     return <text color="red">No play-by-play data available.</text>;
   }
+
   let parsed = [];
   try {
-    const raw = typeof playByPlayData === 'string' ? JSON.parse(playByPlayData) : playByPlayData;
+    const raw = typeof livePlayByPlayData === 'string' ? JSON.parse(livePlayByPlayData) : livePlayByPlayData;
     parsed = parsePlayByPlay(raw);
   } catch (e) {
     // Only log parsing errors
-    console.error('[PlayByPlayTab] Error parsing playByPlayData:', e);
+    console.error('[LivePlayByPlayTab] Error parsing playByPlayData:', e);
     return <text color="red">Error parsing play-by-play data.</text>;
   }
+
   if (!parsed.length) {
     return <text color="red">No play-by-play events found.</text>;
   }
+
   // Helper for ordinal
   const ordinal = (n: number) => {
     if (n === 1) return '1st';

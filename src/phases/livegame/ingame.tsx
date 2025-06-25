@@ -1,6 +1,6 @@
 import { Devvit } from '@devvit/public-api';
-import { MLB_LOGOS } from '../assets/logos/mlb.ts';
-import { GameInfo } from '../types/game.ts';
+import { MLB_LOGOS } from '../../assets/logos/mlb.ts';
+import { GameInfo } from '../../types/game.ts';
 
 /*
   This is the in-game phase.
