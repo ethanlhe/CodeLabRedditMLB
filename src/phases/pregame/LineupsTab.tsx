@@ -42,7 +42,7 @@ export function LineupsTab({ gameInfo, homePlayers, awayPlayers }: LineupsTabPro
   const currentPlayers = currentPagination.currentItems;
 
   return (
-    <vstack width="100%" gap="none" backgroundColor="neutral-background-weak" cornerRadius="medium" padding="none">
+    <vstack width="100%" height="380px" gap="none" backgroundColor="neutral-background-weak" cornerRadius="medium" padding="none">
       {/* Table Header */}
       <hstack width="100%" gap="medium" alignment="start middle" padding="xsmall">
         <text size="small" weight="bold" color="#000000" width="120px">Players</text>
@@ -78,6 +78,7 @@ export function LineupsTab({ gameInfo, homePlayers, awayPlayers }: LineupsTabPro
           </hstack>
         );
       })}
+      <spacer grow />
       {/* Bottom row with team tabs and pagination controls */}
       <hstack alignment="end middle" padding="small" gap="small" backgroundColor="neutral-background-weak">
         {/* Team Switch Buttons */}
