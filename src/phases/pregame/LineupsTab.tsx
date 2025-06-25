@@ -44,71 +44,67 @@ export function LineupsTab({ gameInfo, homePlayers, awayPlayers }: LineupsTabPro
   } = selectedLineupTeam === 'home' ? homePagination : awayPagination;
 
   return (
-    <vstack width="100%" gap="none" backgroundColor="#FAFAFA" cornerRadius="medium" padding="none">
-      {/* Team Switch Buttons at Top */}
-      <hstack width="100%" alignment="start middle" gap="small" padding="small">
-        <hstack backgroundColor="#E5EBEE" borderColor="#E0E6E9" cornerRadius="full">
-          <button
-            appearance={selectedLineupTeam === 'home' ? 'secondary' : 'secondary'}
-            width="80px"
-            height="32px"
-            size="small"
-            onPress={() => setSelectedLineupTeam('home')}
-          >
-            {gameInfo.homeTeam.name}
-          </button>
-        </hstack>
-        <hstack borderColor="#E0E6E9" cornerRadius="full">
-          <button
-            appearance={selectedLineupTeam === 'away' ? 'bordered' : 'bordered'}
-            width="64px"
-            height="32px"
-            size="small"
-            onPress={() => setSelectedLineupTeam('away')}
-          >
-            {gameInfo.awayTeam.name}
-          </button>
-        </hstack>
-      </hstack>
+    <vstack width="100%" gap="none" backgroundColor="neutral-background-weak" cornerRadius="medium" padding="none">
       {/* Table Header */}
       <hstack width="100%" gap="medium" alignment="start middle" padding="xsmall">
         <text size="small" weight="bold" color="#000000" width="120px">Players</text>
-        <text size="small" weight="bold" color="#000000" width="45px">AB</text>
-        <text size="small" weight="bold" color="#000000" width="45px">R</text>
-        <text size="small" weight="bold" color="#000000" width="45px">H</text>
-        <text size="small" weight="bold" color="#000000" width="45px">RBI</text>
-        <text size="small" weight="bold" color="#000000" width="45px">HR</text>
-        <text size="small" weight="bold" color="#000000" width="45px">BB</text>
-        <text size="small" weight="bold" color="#000000" width="45px">K</text>
-        <text size="small" weight="bold" color="#000000" width="45px">AVG</text>
-        <text size="small" weight="bold" color="#000000" width="45px">OBP</text>
-        <text size="small" weight="bold" color="#000000" width="45px">SLP</text>
+        <text size="small" weight="bold" color="#000000" width="36px">AB</text>
+        <text size="small" weight="bold" color="#000000" width="36px">R</text>
+        <text size="small" weight="bold" color="#000000" width="36px">H</text>
+        <text size="small" weight="bold" color="#000000" width="36px">RBI</text>
+        <text size="small" weight="bold" color="#000000" width="36px">HR</text>
+        <text size="small" weight="bold" color="#000000" width="36px">BB</text>
+        <text size="small" weight="bold" color="#000000" width="36px">K</text>
+        <text size="small" weight="bold" color="#000000" width="44px">AVG</text>
+        <text size="small" weight="bold" color="#000000" width="44px">OBP</text>
+        <text size="small" weight="bold" color="#000000" width="44px">SLP</text>
       </hstack>
       {/* Table Rows */}
       {(selectedLineupTeam === 'home' ? homePagination : awayPagination).currentItems.map((player: Player, idx: number) => {
         return (
-          <hstack key={String(idx)} width="100%" gap="medium" alignment="start middle" padding="xsmall" backgroundColor={idx % 2 === 0 ? "#FAFAFA" : "#FFFFFF"}>
+          <hstack key={String(idx)} width="100%" gap="medium" alignment="start middle" padding="xsmall" backgroundColor={idx % 2 === 0 ? "neutral-background-weak" : "neutral-background-strong"}>
             <hstack gap="small" width="120px">
               <text size="small" color="#000000">{player.firstName[0]}. {player.lastName}</text>
               <text size="small" color="#5A7684">{player.primaryPosition}</text>
             </hstack>
-            <text size="small" color="#000000" width="45px">{player.ab ?? '-'}</text>
-            <text size="small" color="#000000" width="45px">{player.r ?? '-'}</text>
-            <text size="small" color="#000000" width="45px">{player.h ?? '-'}</text>
-            <text size="small" color="#000000" width="45px">{player.rbi ?? '-'}</text>
-            <text size="small" color="#000000" width="45px">{player.hr ?? '-'}</text>
-            <text size="small" color="#000000" width="45px">{player.bb ?? '-'}</text>
-            <text size="small" color="#000000" width="45px">{player.k ?? '-'}</text>
-            <text size="small" color="#000000" width="45px">{player.avg ?? '-'}</text>
-            <text size="small" color="#000000" width="45px">{player.obp ?? '-'}</text>
-            <text size="small" color="#000000" width="45px">{player.slg ?? '-'}</text>
+            <text size="small" color="#000000" width="36px">{player.ab ?? '-'}</text>
+            <text size="small" color="#000000" width="36px">{player.r ?? '-'}</text>
+            <text size="small" color="#000000" width="36px">{player.h ?? '-'}</text>
+            <text size="small" color="#000000" width="36px">{player.rbi ?? '-'}</text>
+            <text size="small" color="#000000" width="36px">{player.hr ?? '-'}</text>
+            <text size="small" color="#000000" width="36px">{player.bb ?? '-'}</text>
+            <text size="small" color="#000000" width="36px">{player.k ?? '-'}</text>
+            <text size="small" color="#000000" width="44px">{player.avg ?? '-'}</text>
+            <text size="small" color="#000000" width="44px">{player.obp ?? '-'}</text>
+            <text size="small" color="#000000" width="44px">{player.slg ?? '-'}</text>
           </hstack>
         );
       })}
-      {/* Rendering pagination controls */}
-      <hstack alignment="middle center" gap="small" padding="medium">
+      {/* Bottom row with team tabs and pagination controls */}
+      <hstack alignment="end middle" padding="small" gap="small" backgroundColor="neutral-background-weak">
+        {/* Team Switch Buttons */}
+        <hstack gap="small" alignment="center middle">
+          <hstack backgroundColor="neutral-background-weak" borderColor="neutral-border-weak" cornerRadius="full">
+            <button
+              appearance={selectedLineupTeam === 'home' ? 'secondary' : 'plain'}
+              size="small"
+              onPress={() => setSelectedLineupTeam('home')}
+            >
+              {gameInfo.homeTeam.name}
+            </button>
+          </hstack>
+          <hstack backgroundColor="neutral-background-weak" borderColor="neutral-border-weak" cornerRadius="full">
+            <button
+              appearance={selectedLineupTeam === 'away' ? 'secondary' : 'plain'}
+              size="small"
+              onPress={() => setSelectedLineupTeam('away')}
+            >
+              {gameInfo.awayTeam.name}
+            </button>
+          </hstack>
+        </hstack>
+        <spacer grow />
         <button onPress={(selectedLineupTeam === 'home' ? homePagination : awayPagination).toPrevPage} icon="up"/>
-        <text>{currentPage}</text>
         <button onPress={(selectedLineupTeam === 'home' ? homePagination : awayPagination).toNextPage} icon="down"/>
       </hstack>
     </vstack>

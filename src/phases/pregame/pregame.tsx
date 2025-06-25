@@ -109,9 +109,6 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
 
   return (
     <vstack width="100%" maxWidth={600} padding="small" gap="small" cornerRadius="large">
-      {/* line */}
-      <hstack width="100%" height="1px" backgroundColor="#E5EBEE" />
-      
       {/* Matchup Row */}
       <hstack width="100%" alignment="center middle" gap="small" padding="none">
         {/* Away Team */}
@@ -122,8 +119,8 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
             imageHeight={48}
             description={`${gameInfo.awayTeam.name} logo`}
           />
-          <text size="medium" weight="bold" alignment="center" color="#0F1A1C">{gameInfo.awayTeam.name}</text>
-          <text size="small" color="#0F1A1C" alignment="center">({gameInfo.awayTeam.record})</text>
+          <text size="medium" weight="bold" alignment="center" color="neutral-content-strong">{gameInfo.awayTeam.name}</text>
+          <text size="small" color="neutral-content-strong" alignment="center">({gameInfo.awayTeam.record})</text>
         </vstack>
         {/* VS */}
         <vstack alignment="center middle" gap="small" minWidth={80}>
@@ -137,29 +134,29 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
             imageHeight={48}
             description={`${gameInfo.homeTeam.name} logo`}
           />
-          <text size="medium" weight="bold" alignment="center" color="#0F1A1C">{gameInfo.homeTeam.name}</text>
-          <text size="small" color="#0F1A1C" alignment="center">({gameInfo.homeTeam.record})</text>
+          <text size="medium" weight="bold" alignment="center" color="neutral-content-strong">{gameInfo.homeTeam.name}</text>
+          <text size="small" color="neutral-content-strong" alignment="center">({gameInfo.homeTeam.record})</text>
         </vstack>
       </hstack>
-      <hstack width="100%" height="1px" backgroundColor="#E5EBEE" padding="none" />
+      <hstack width="100%" height="1px" backgroundColor="neutral-border-weak" padding="none" />
 
       {/* Countdown Section */}
-      <vstack width="100%" gap="small" padding="small">
+      <vstack width="100%" gap="small">
         <text size="small" color="#888" weight="bold" alignment="start">COUNTDOWN</text>
         <hstack gap="medium" alignment="center middle">
-          <vstack alignment="center middle" gap="none" backgroundColor="#FFFFFF" width="50px" height="45px" cornerRadius="small">
-            <text size="xlarge" weight="bold" color="#000000">{days}</text>
+          <vstack alignment="center middle" gap="none" backgroundColor="neutral-background" width="50px" height="45px" cornerRadius="small">
+            <text size="xlarge" weight="bold" color="neutral-content-strong">{days}</text>
             <text size="xsmall" color="#888">D</text>
           </vstack>
           <text size="large" color="#888" weight="bold">:</text>
-          <vstack alignment="center middle" gap="none" backgroundColor="#FFFFFF" width="50px" height="45px" cornerRadius="small">
-            <text size="xlarge" weight="bold" color="#000000">{hours}</text>
+          <vstack alignment="center middle" gap="none" backgroundColor="neutral-background" width="50px" height="45px" cornerRadius="small">
+            <text size="xlarge" weight="bold" color="neutral-content-strong">{hours}</text>
             <text size="xsmall" color="#888">H</text>
           </vstack>
           <spacer grow />
           {subscriptionState !== CountdownSubscriptionState.UNAVAILABLE && (
             <button
-              size="medium"
+              size="small"
               appearance="secondary"
               icon={
                 subscriptionState === CountdownSubscriptionState.SUBSCRIBED
@@ -176,7 +173,7 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
           )}
         </hstack>
       </vstack>
-      <hstack width="100%" height="1px" backgroundColor="#E5EBEE" />
+      <hstack width="100%" height="1px" backgroundColor="neutral-border-weak" />
 
       {/* Poll Section */}
       <vstack width="100%" gap="small">

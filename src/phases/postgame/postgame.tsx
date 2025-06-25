@@ -95,66 +95,65 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
       {gameInfo.scoring ? (
         <vstack gap="small" width="100%">
           <hstack gap="medium" alignment="center middle">
-            <text size="xsmall" weight="bold" color="neutral-content-weak">TEAM</text>
+            <text size="xsmall" weight="bold" color="neutral-content-strong">TEAM</text>
             <spacer grow />
             {gameInfo.scoring.home.map((inning, idx, arr) => (
-              <text key={String(idx)} size="xsmall" weight="bold" color="neutral-content-weak" minWidth={idx === arr.length - 1 ? 12 : 6}>{String(inning.number ?? '')}</text>
+              <text key={String(idx)} size="xsmall" weight="bold" color="neutral-content-strong" minWidth={idx === arr.length - 1 ? 12 : 6}>{String(inning.number ?? '')}</text>
             ))}
 
-           <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={7}>R</text>
-            <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={7}>H</text>
-            <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={2}>E</text>
+           <text size="xsmall" weight="bold" color="neutral-content-strong" minWidth={7}>R</text>
+            <text size="xsmall" weight="bold" color="neutral-content-strong" minWidth={7}>H</text>
+            <text size="xsmall" weight="bold" color="neutral-content-strong" minWidth={2}>E</text>
           </hstack>
           {/* Away team row */}
           <hstack gap="medium" alignment="center middle">
-            <text size="small" weight="bold">{gameInfo.awayTeam.abbreviation ?? ''}</text>
+            <text size="small" weight="bold" color="neutral-content-strong">{gameInfo.awayTeam.abbreviation ?? ''}</text>
             <spacer grow />
             {gameInfo.scoring.away.map((inning, idx, arr) => (
-              <text key={String(idx)} size="small" minWidth={idx === arr.length - 1 ? 12 : 6}>{String(inning.runs ?? '')}</text>
+              <text key={String(idx)} size="small" color="neutral-content-strong" minWidth={idx === arr.length - 1 ? 12 : 6}>{String(inning.runs ?? '')}</text>
             ))}
 
-            <text size="small" minWidth={7}>{String(gameInfo.teamStats?.away.R ?? '')}</text>
-            <text size="small" minWidth={7}>{String(gameInfo.teamStats?.away.H ?? '')}</text>
-            <text size="small" minWidth={2}>{String(gameInfo.teamStats?.away.E ?? '')}</text>
+            <text size="small" color="neutral-content-strong" minWidth={7}>{String(gameInfo.teamStats?.away.R ?? '')}</text>
+            <text size="small" color="neutral-content-strong" minWidth={7}>{String(gameInfo.teamStats?.away.H ?? '')}</text>
+            <text size="small" color="neutral-content-strong" minWidth={2}>{String(gameInfo.teamStats?.away.E ?? '')}</text>
           </hstack>
           <hstack width="100%" backgroundColor="neutral-border-weak" height="1px" />
           {/* Home team row */}
           <hstack gap="medium" alignment="center middle">
-            <text size="small" weight="bold">{gameInfo.homeTeam.abbreviation ?? ''}</text>
+            <text size="small" weight="bold" color="neutral-content-strong">{gameInfo.homeTeam.abbreviation ?? ''}</text>
             <spacer grow />
             {gameInfo.scoring.home.map((inning, idx, arr) => (
-              <text key={String(idx)} size="small" minWidth={idx === arr.length - 1 ? 12 : 6}>{String(inning.runs ?? '')}</text>
+              <text key={String(idx)} size="small" color="neutral-content-strong" minWidth={idx === arr.length - 1 ? 12 : 6}>{String(inning.runs ?? '')}</text>
             ))}
 
-            <text size="small" minWidth={7}>{String(gameInfo.teamStats?.home.R ?? '')}</text>
-            <text size="small" minWidth={7}>{String(gameInfo.teamStats?.home.H ?? '')}</text>
-            <text size="small" minWidth={2}>{String(gameInfo.teamStats?.home.E ?? '')}</text>
+            <text size="small" color="neutral-content-strong" minWidth={7}>{String(gameInfo.teamStats?.home.R ?? '')}</text>
+            <text size="small" color="neutral-content-strong" minWidth={7}>{String(gameInfo.teamStats?.home.H ?? '')}</text>
+            <text size="small" color="neutral-content-strong" minWidth={2}>{String(gameInfo.teamStats?.home.E ?? '')}</text>
           </hstack>
         </vstack>
       ) : null}
       <spacer size="small" />
-      <hstack width="100%" backgroundColor="neutral-border" height="1px" />
+      <hstack width="100%" backgroundColor="neutral-border-weak" height="1px" />
       <spacer size="medium" />
       {/* Team Stats Section */}
       <vstack gap="small" width="100%">
-        <text size="small" weight="bold">Team Stats</text>
         <hstack gap="medium" alignment="center middle">
-          <text size="xsmall" weight="bold" color="neutral-content-weak">TEAM</text>
+          <text size="xsmall" weight="bold" color="neutral-content-strong">TEAM</text>
           <spacer grow />
-          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>R</text>
-          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>H</text>
-          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>HR</text>
-          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>TB</text>
-          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>SB</text>
-          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={11}>LOB</text>
-          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>E</text>
-          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>K</text>
-          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={8}>SO</text>
-          <text size="xsmall" weight="bold" color="neutral-content-weak" minWidth={2}>BB</text>
+          <text size="xsmall" weight="bold" color="neutral-content-strong" minWidth={8}>R</text>
+          <text size="xsmall" weight="bold" color="neutral-content-strong" minWidth={8}>H</text>
+          <text size="xsmall" weight="bold" color="neutral-content-strong" minWidth={8}>HR</text>
+          <text size="xsmall" weight="bold" color="neutral-content-strong" minWidth={8}>TB</text>
+          <text size="xsmall" weight="bold" color="neutral-content-strong" minWidth={8}>SB</text>
+          <text size="xsmall" weight="bold" color="neutral-content-strong" minWidth={11}>LOB</text>
+          <text size="xsmall" weight="bold" color="neutral-content-strong" minWidth={8}>E</text>
+          <text size="xsmall" weight="bold" color="neutral-content-strong" minWidth={8}>K</text>
+          <text size="xsmall" weight="bold" color="neutral-content-strong" minWidth={8}>SO</text>
+          <text size="xsmall" weight="bold" color="neutral-content-strong" minWidth={2}>BB</text>
         </hstack>
         {/* Away team row */}
         <hstack gap="medium" alignment="center middle">
-          <text size="small" weight="bold">{gameInfo.awayTeam.abbreviation}</text>
+          <text size="small" weight="bold" color="neutral-content-strong">{gameInfo.awayTeam.abbreviation}</text>
           <spacer grow />
           <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.away.R}</text>
           <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.away.H}</text>
@@ -170,7 +169,7 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
         <hstack width="100%" backgroundColor="neutral-border-weak" height="1px" />
         {/* Home team row */}
         <hstack gap="medium" alignment="center middle">
-          <text size="small" weight="bold">{gameInfo.homeTeam.abbreviation}</text>
+          <text size="small" weight="bold" color="neutral-content-strong">{gameInfo.homeTeam.abbreviation}</text>
           <spacer grow />
           <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.home.R}</text>
           <text size="small" color="neutral-content-strong" minWidth={8}>{gameInfo.teamStats?.home.H}</text>

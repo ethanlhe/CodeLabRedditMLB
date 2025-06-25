@@ -16,7 +16,7 @@ export function Header({ gameInfo, phase }: HeaderProps) {
 
   return (
     <vstack width="100%" gap="none" padding="none">
-      <hstack width="100%" backgroundColor="neutral-background-weak" alignment="start middle">
+      <hstack width="100%" gap="small" backgroundColor="neutral-background-weak" alignment="start middle">
         <hstack gap="small" alignment="start middle">
           <text size="medium" weight="bold" color="neutral-content-strong">MLB</text>
         </hstack>
@@ -37,13 +37,16 @@ export function Header({ gameInfo, phase }: HeaderProps) {
         {phase === 'post' && (
           <text size="small" color="#888">Final</text>
         )}
-        {/* <text size="small" weight="bold" color="#576F76">{timeWithZone}</text> */}
       </hstack>
+      <hstack width="100%" gap="small" backgroundColor="neutral-background-weak" alignment="start middle">
       <text size="small" color="#888" alignment="start">
         {dateNoYear} • {gameInfo.location}
       </text>
+      <spacer grow />
+      <text size="small" weight="bold" color="#888">{timeWithZone}</text>
+      </hstack>
       <hstack padding="xsmall"/>
-      <hstack width="100%" backgroundColor="neutral-border" height="1px" />
+      <hstack width="100%" backgroundColor="neutral-border-weak" height="1px" />
     </vstack>
   );
 }
