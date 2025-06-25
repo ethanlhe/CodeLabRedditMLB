@@ -42,7 +42,13 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
   const awayLogo = MLB_LOGOS[awayAbbr];
   const homeLogo = MLB_LOGOS[homeAbbr];
 
-  const { days, hours } = getCountdown(gameInfo.date, gameInfo.currentTime, gameInfo.timezone);
+  // Memoize countdown calculation to prevent infinite loops
+  const { data: countdown } = useAsync(async () => {
+    return getCountdown(gameInfo.date, gameInfo.currentTime, gameInfo.timezone);
+  });
+
+  const days = countdown?.days ?? 0;
+  const hours = countdown?.hours ?? 0;
 
   const [hasVoted, setHasVoted] = useState(false);
 
@@ -218,45 +224,48 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
 }
 
 function getCountdown(scheduled: string, currentTime: string, timezone: string): { days: number; hours: number; } {
-  // Combine scheduled date and time
-  // scheduled is in format 'Thursday, May 22, 2025' and currentTime is '10:15 AM'
-  // timezone is e.g. 'America/New_York'
-  const scheduledDateTimeString = `${scheduled} ${currentTime}`;
-  
-  // Try to parse with luxon using the actual format
-  let gameTime = DateTime.fromFormat(scheduledDateTimeString, 'EEEE, MMMM d, yyyy h:mm a', { zone: timezone });
-  if (!gameTime.isValid) {
-    // Try fallback format without comma after day
-    gameTime = DateTime.fromFormat(scheduledDateTimeString, 'EEEE, MMMM d yyyy h:mm a', { zone: timezone });
-  }
-  if (!gameTime.isValid) {
-    // Try another fallback format
-    gameTime = DateTime.fromFormat(scheduledDateTimeString, 'MMMM d, yyyy h:mm a', { zone: timezone });
-  }
-  if (!gameTime.isValid) {
-    // Try parsing just the date part first, then add time
-    const dateOnly = DateTime.fromFormat(scheduled, 'EEEE, MMMM d, yyyy', { zone: timezone });
-    if (dateOnly.isValid) {
-      const timeOnly = DateTime.fromFormat(currentTime, 'h:mm a', { zone: timezone });
-      if (timeOnly.isValid) {
-        gameTime = dateOnly.set({
-          hour: timeOnly.hour,
-          minute: timeOnly.minute
-        });
+  try {
+    // Combine scheduled date and time
+    const scheduledDateTimeString = `${scheduled} ${currentTime}`;
+    
+    // Try to parse with luxon using the actual format
+    let gameTime = DateTime.fromFormat(scheduledDateTimeString, 'EEEE, MMMM d, yyyy h:mm a', { zone: timezone });
+    if (!gameTime.isValid) {
+      // Try fallback format without comma after day
+      gameTime = DateTime.fromFormat(scheduledDateTimeString, 'EEEE, MMMM d yyyy h:mm a', { zone: timezone });
+    }
+    if (!gameTime.isValid) {
+      // Try another fallback format
+      gameTime = DateTime.fromFormat(scheduledDateTimeString, 'MMMM d, yyyy h:mm a', { zone: timezone });
+    }
+    if (!gameTime.isValid) {
+      // Try parsing just the date part first, then add time
+      const dateOnly = DateTime.fromFormat(scheduled, 'EEEE, MMMM d, yyyy', { zone: timezone });
+      if (dateOnly.isValid) {
+        const timeOnly = DateTime.fromFormat(currentTime, 'h:mm a', { zone: timezone });
+        if (timeOnly.isValid) {
+          gameTime = dateOnly.set({
+            hour: timeOnly.hour,
+            minute: timeOnly.minute
+          });
+        }
       }
     }
-  }
-  if (!gameTime.isValid) {
-    // If all parsing fails, return 0 values
-    console.warn('Failed to parse game time:', scheduledDateTimeString);
+    if (!gameTime.isValid) {
+      // If all parsing fails, return 0 values
+      console.warn('Failed to parse game time:', scheduledDateTimeString);
+      return { days: 0, hours: 0 };
+    }
+    
+    const now = DateTime.now().setZone(timezone);
+    const diff = gameTime.diff(now, ['days', 'hours']).toObject();
+    
+    return {
+      days: Math.max(0, Math.floor(diff.days ?? 0)),
+      hours: Math.max(0, Math.floor(diff.hours ?? 0)),
+    };
+  } catch (error) {
+    console.error('Error calculating countdown:', error);
     return { days: 0, hours: 0 };
   }
-  
-  const now = DateTime.now().setZone(timezone);
-  const diff = gameTime.diff(now, ['days', 'hours', 'minutes']).toObject();
-  
-  return {
-    days: Math.max(0, Math.floor(diff.days ?? 0)),
-    hours: Math.max(0, Math.floor(diff.hours ?? 0)),
-  };
 }
