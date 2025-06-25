@@ -1,4 +1,4 @@
-import { Devvit, useState, useAsync, useChannel, FormOnSubmitEvent } from '@devvit/public-api';
+import { Devvit, useState, useAsync, useInterval, FormOnSubmitEvent } from '@devvit/public-api';
 import { renderPreGame } from './phases/pregame.tsx';
 import { renderInGame } from './phases/ingame.tsx';
 import { renderPostGame } from './phases/postgame.tsx';
@@ -21,33 +21,44 @@ export function setupBaseballApp() {
     // Setup the game selection form
     setupGameSelectionForm();
 
-    // Add scheduled job for live game updates
-    Devvit.addSchedulerJob({
-        name: 'update_live_games',
-        onRun: async (_: unknown, context) => {
-            try {
-                // Get all active game posts from Redis
-                const activeGames = await context.redis.hkeys('active_games');
+    Devvit.addCustomPostType({
+        name: 'Baseball Scorecard - Test!!',
+        height: 'tall',
+        render: (context) => {
+            const [isLive, setIsLive] = useState<boolean>(false);
+            const [gameId, setGameId] = useState<string | null>(null);
+            const [timer, setTimer] = useState(0);
 
-                for (const gameId of activeGames) {
-                    const gameData = await context.redis.get(`game_${gameId}`);
-                    if (!gameData) continue;
+            // Set up interval for live game updates
+            useInterval(() => {
+                if (isLive && gameId) {
+                    setTimer(t => t + 1);
+                }
+            }, 1000).start();
 
-                    const game = JSON.parse(gameData);
-                    const boxscoreData = await context.redis.get(`boxscore_${game.id}`);
+            // Use useAsync for initial data load
+            const { loading, error, data: asyncGameData } = useAsync<any>(async () => {
+                try {
+                    console.log('[Scoreboard] Loading game data for post:', context.postId);
+                    const storedGameStr = await context.redis.get(`game_${context.postId}`);
+                    
+                    if (!storedGameStr) {
+                        throw new Error('No game data available for this post');
+                    }
 
-                    if (boxscoreData) {
-                        const parsedData = JSON.parse(boxscoreData);
-                        if (parsedData.game.status === 'in-progress') {
-                            // Fetch fresh data for live games
-                            const API_KEY = await context.settings.get('sportsradar-api-key');
-                            if (!API_KEY) {
-                                console.error('SportsRadar API key not configured');
-                                continue;
-                            }
+                    const storedGame = JSON.parse(storedGameStr);
+                    const API_KEY = await context.settings.get('sportsradar-api-key');
+                    
+                    if (!API_KEY) {
+                        throw new Error('SportsRadar API key not configured');
+                    }
 
+                    // Use context.cache for automatic caching and TTL management
+                    const boxscoreData = await context.cache(
+                        async () => {
+                            console.log('[Scoreboard] Fetching fresh boxscore data for game:', storedGame.id);
                             const response = await fetch(
-                                `https://api.sportradar.us/mlb/trial/v8/en/games/${game.id}/boxscore.json`,
+                                `https://api.sportradar.us/mlb/trial/v8/en/games/${storedGame.id}/boxscore.json`,
                                 {
                                     headers: {
                                         'accept': 'application/json',
@@ -56,142 +67,24 @@ export function setupBaseballApp() {
                                 }
                             );
 
-                            if (response.ok) {
-                                const newData = await response.json();
-                                await context.redis.set(`boxscore_${game.id}`, JSON.stringify(newData));
-                                await context.redis.set(`boxscore_${game.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
-
-                                // Broadcast update to all clients
-                                context.realtime.send(`game_updates_${game.id}`, newData);
+                            if (!response.ok) {
+                                throw new Error(`API request failed: ${response.statusText}`);
                             }
+
+                            return await response.json();
+                        },
+                        {
+                            key: `boxscore-${storedGame.id}`,
+                            ttl: 10000, // Default 10 seconds, will be adjusted based on game status
                         }
-                    }
-                }
-            } catch (error) {
-                console.error('Error in update_live_games job:', error);
-            }
-        },
-    });
+                    );
 
-    // Add AppInstall trigger to schedule the updater job
-    Devvit.addTrigger({
-        event: 'AppInstall',
-        onEvent: async (_event, context) => {
-            await context.scheduler.runJob({
-                name: 'update_live_games',
-                cron: '*/30 * * * * *'
-            });
-        }
-    });
-
-    Devvit.addCustomPostType({
-        name: 'Baseball Scorecard - Test!!',
-        height: 'tall',
-        render: (context) => {
-            const [isLive, setIsLive] = useState<boolean>(false);
-            const [gameData, setGameData] = useState<any>(null);
-            const [gameId, setGameId] = useState<string | null>(null);
-            const [lastUpdateTime, setLastUpdateTime] = useState<number>(Date.now());
-
-            // Use useAsync for initial data load
-            const { loading, error, data: asyncGameData } = useAsync<any>(async () => {
-                try {
-                    console.log('[Scoreboard] Loading game data for post:', context.postId);
-                    const storedGameStr = await context.redis.get(`game_${context.postId}`);
-                    let storedGame;
-                    let boxscoreData;
-                    let extendedSummaryData;
-                    let needsUpdate = false;
-
-                    if (!storedGameStr) {
-                        console.log('[Scoreboard] No game data in Redis, fetching from API...');
-                        needsUpdate = true;
-                    } else {
-                        storedGame = JSON.parse(storedGameStr);
-                        boxscoreData = await context.redis.get(`boxscore_${storedGame.id}`);
-                        extendedSummaryData = await context.redis.get(`extended_summary_${storedGame.id}`);
-                        
-                        // Check if boxscore data is stale (older than 5 minutes)
-                        const timestamp = await context.redis.get(`boxscore_${storedGame.id}_timestamp`);
-                        if (!timestamp || (Date.now() / 1000 - parseInt(timestamp)) > 300) {
-                            console.log('[Scoreboard] Boxscore data is stale, fetching fresh data...');
-                            needsUpdate = true;
-                        }
-
-                        // Check if extended summary data is stale (older than 5 minutes)
-                        const extendedSummaryTimestamp = await context.redis.get(`extended_summary_${storedGame.id}_timestamp`);
-                        if (!extendedSummaryTimestamp || (Date.now() / 1000 - parseInt(extendedSummaryTimestamp)) > 300) {
-                            console.log('[Scoreboard] Extended summary data is stale, fetching fresh data...');
-                            needsUpdate = true;
-                        }
-                    }
-
-                    if (needsUpdate) {
-                        const API_KEY = await context.settings.get('sportsradar-api-key');
-                        if (!API_KEY) {
-                            throw new Error('SportsRadar API key not configured');
-                        }
-
-                        // If we don't have stored game data, we can't proceed
-                        if (!storedGame) {
-                            throw new Error('No game data available for this post');
-                        }
-
-                        // Fetch fresh data from API
-                        const response = await fetch(
-                            `https://api.sportradar.us/mlb/trial/v8/en/games/${storedGame.id}/boxscore.json`,
-                            {
-                                headers: {
-                                    'accept': 'application/json',
-                                    'x-api-key': API_KEY as string
-                                }
-                            }
-                        );
-
-                        if (!response.ok) {
-                            throw new Error(`API request failed: ${response.statusText}`);
-                        }
-
-                        const newData = await response.json();
-                        
-                        // Update Redis with fresh data
-                        await context.redis.set(`game_${context.postId}`, JSON.stringify(storedGame));
-                        await context.redis.set(`boxscore_${storedGame.id}`, JSON.stringify(newData));
-                        await context.redis.set(`boxscore_${storedGame.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
-                        
-                        boxscoreData = JSON.stringify(newData);
-
-                        // Fetch fresh extended summary data
-                        const extendedSummaryResponse = await fetch(
-                            `https://api.sportradar.us/mlb/trial/v8/en/games/${storedGame.id}/extended_summary.json`,
-                            {
-                                headers: {
-                                    'accept': 'application/json',
-                                    'x-api-key': API_KEY as string
-                                }
-                            }
-                        );
-
-                        if (extendedSummaryResponse.ok) {
-                            const newExtendedSummaryData = await extendedSummaryResponse.json();
-                            await context.redis.set(`extended_summary_${storedGame.id}`, JSON.stringify(newExtendedSummaryData));
-                            await context.redis.set(`extended_summary_${storedGame.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
-                            extendedSummaryData = JSON.stringify(newExtendedSummaryData);
-                        } else {
-                            console.error('[Scoreboard] Failed to fetch extended summary:', extendedSummaryResponse.status);
-                        }
-                    }
-
-                    if (!boxscoreData) {
-                        throw new Error('No boxscore data available');
-                    }
-
-                    const parsedData = JSON.parse(boxscoreData);
-                    
+                    const parsedData = boxscoreData;
                     const isGameLive = parsedData.game.status === 'in-progress';
                     const parsedGameInfo = parseGameBoxscore(parsedData.game);
                     
                     setIsLive(isGameLive);
+                    setGameId(storedGame.id);
 
                     // Add to active games if live
                     if (isGameLive) {
@@ -202,50 +95,75 @@ export function setupBaseballApp() {
                     const homeStats = extractTeamStats(parsedData.game.home.statistics);
                     const awayStats = extractTeamStats(parsedData.game.away.statistics);
 
+                    // Fetch extended summary data with caching
+                    let extendedSummaryData = null;
+                    if (isGameLive) {
+                        extendedSummaryData = await context.cache(
+                            async () => {
+                                const extendedSummaryResponse = await fetch(
+                                    `https://api.sportradar.us/mlb/trial/v8/en/games/${storedGame.id}/extended_summary.json`,
+                                    {
+                                        headers: {
+                                            'accept': 'application/json',
+                                            'x-api-key': API_KEY as string
+                                        }
+                                    }
+                                );
+
+                                if (extendedSummaryResponse.ok) {
+                                    return await extendedSummaryResponse.json();
+                                } else {
+                                    console.error('[Scoreboard] Failed to fetch extended summary:', extendedSummaryResponse.status);
+                                    return null;
+                                }
+                            },
+                            {
+                                key: `extended-summary-${storedGame.id}`,
+                                ttl: 10000, // 10 seconds for live games
+                            }
+                        );
+                    }
+
                     // After fetching and parsing extendedSummaryData:
                     let extendedHomeStats, extendedAwayStats;
                     if (extendedSummaryData) {
-                        let parsedExtendedSummary = typeof extendedSummaryData === 'string' ? JSON.parse(extendedSummaryData) : extendedSummaryData;
-                        if (parsedExtendedSummary?.game) {
-                            extendedHomeStats =  extractTeamStats(parsedExtendedSummary.game?.home?.statistics);
-                            extendedAwayStats = extractTeamStats(parsedExtendedSummary.game?.away?.statistics);
+                        if (extendedSummaryData?.game) {
+                            extendedHomeStats = extractTeamStats(extendedSummaryData.game?.home?.statistics);
+                            extendedAwayStats = extractTeamStats(extendedSummaryData.game?.away?.statistics);
                             parsedGameInfo.teamStats = { home: extendedHomeStats, away: extendedAwayStats };
-                            parsedGameInfo.extendedSummaryData = parsedExtendedSummary;
+                            parsedGameInfo.extendedSummaryData = extendedSummaryData;
                         }
                     }
 
-                    // Fetch and store play-by-play data for postgame and closed games
+                    // Fetch and store play-by-play data for live games and postgame games
                     let playByPlayData = null;
-                    if (["post", "closed", "final"].includes(parsedGameInfo.status)) {
-                        console.log('[Scoreboard] Entering play-by-play fetch block for postgame/closed/final');
-                        // Use the same API_KEY as above
-                        const API_KEY = await context.settings.get('sportsradar-api-key');
-                        if (!API_KEY) {
-                            throw new Error('SportsRadar API key not configured');
-                        }
-                        // Try to get from Redis first
-                        playByPlayData = await context.redis.get(`pbp_${storedGame.id}`);
-                        const pbpTimestamp = await context.redis.get(`pbp_${storedGame.id}_timestamp`);
-                        if (!playByPlayData || !pbpTimestamp || (Date.now() / 1000 - parseInt(pbpTimestamp)) > 300) {
-                            // Fetch fresh play-by-play data
-                            const pbpResponse = await fetch(
-                                `https://api.sportradar.us/mlb/trial/v8/en/games/${storedGame.id}/pbp.json`,
-                                {
-                                    headers: {
-                                        'accept': 'application/json',
-                                        'x-api-key': API_KEY as string
+                    if (isGameLive || ["post", "closed", "final"].includes(parsedGameInfo.status)) {
+                        console.log('[Scoreboard] Fetching play-by-play data for game:', storedGame.id);
+                        
+                        playByPlayData = await context.cache(
+                            async () => {
+                                const pbpResponse = await fetch(
+                                    `https://api.sportradar.us/mlb/trial/v8/en/games/${storedGame.id}/pbp.json`,
+                                    {
+                                        headers: {
+                                            'accept': 'application/json',
+                                            'x-api-key': API_KEY as string
+                                        }
                                     }
+                                );
+                                
+                                if (pbpResponse.ok) {
+                                    return await pbpResponse.json();
+                                } else {
+                                    console.error('[Scoreboard] Failed to fetch play-by-play:', pbpResponse.status);
+                                    return null;
                                 }
-                            );
-                            if (pbpResponse.ok) {
-                                const pbpJson = await pbpResponse.json();
-                                playByPlayData = JSON.stringify(pbpJson);
-                                await context.redis.set(`pbp_${storedGame.id}`, playByPlayData);
-                                await context.redis.set(`pbp_${storedGame.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
-                            } else {
-                                console.error('[Scoreboard] Failed to fetch play-by-play:', pbpResponse.status);
+                            },
+                            {
+                                key: `pbp-${storedGame.id}`,
+                                ttl: isGameLive ? 10000 : 1000 * 60 * 5, // 10 seconds for live games, 5 minutes for postgame
                             }
-                        }
+                        );
                     }
 
                     return { ...parsedGameInfo, playByPlayData };
@@ -253,24 +171,7 @@ export function setupBaseballApp() {
                     console.error('[Scoreboard] Error loading game data:', err);
                     throw err;
                 }
-            });
-
-            // Set up realtime updates for live games
-            const channelName = gameId ? `game_updates_${gameId}` : 'waiting_for_gameid';
-            const channel = useChannel({
-                name: channelName,
-                onMessage: (updatedData: any) => {
-                    if (updatedData?.game) {
-                        console.log('[Scoreboard] Received game update:', updatedData);
-                        setGameData(parseGameBoxscore(updatedData.game));
-                        setLastUpdateTime(Date.now());
-                    }
-                },
-            });
-
-            if (isLive && gameId) {
-                channel.subscribe();
-            }
+            }, { depends: [gameId, timer] }); // Re-run when gameId changes or timer updates for live games
 
             if (loading) {
                 return (
@@ -290,8 +191,8 @@ export function setupBaseballApp() {
                 );
             }
 
-            // Use the most up-to-date game data (live update or async load)
-            const displayGameData = gameData ?? asyncGameData;
+            // Use the most up-to-date game data (now just asyncGameData since we're using automatic refresh)
+            const displayGameData = asyncGameData;
 
             if (!displayGameData) {
                 console.log('[Scoreboard] No game data available after loading.');
@@ -408,9 +309,7 @@ export function setupBaseballApp() {
                     tabComponent = renderInGame({ gameInfo: displayGameData as GameInfo });
                 } else if (selectedTab === 'allplays') {
                     tabComponent = (
-                        <vstack width="100%" alignment="center middle" padding="large">
-                            <text size="large">All Plays coming soon!</text>
-                        </vstack>
+                        <PlayByPlayTab playByPlayData={displayGameData.playByPlayData} />
                     );
                 } else if (selectedTab === 'boxscore') {
                     tabComponent = (

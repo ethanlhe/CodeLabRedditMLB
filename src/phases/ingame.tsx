@@ -1,6 +1,7 @@
 import { Devvit } from '@devvit/public-api';
 import { MLB_LOGOS } from '../assets/logos/mlb.ts';
 import { GameInfo } from '../types/game.ts';
+import { parsePlayByPlay } from '../utils/gameParsers.js';
 
 /*
   This is the in-game phase.
@@ -27,6 +28,19 @@ export function renderInGame({ gameInfo }: InGameProps) {
   }
   const awayLogo = MLB_LOGOS[awayAbbr];
   const homeLogo = MLB_LOGOS[homeAbbr];
+
+  // Parse play-by-play data for recent plays
+  let recentPlays: any[] = [];
+  if (gameInfo.playByPlayData) {
+    try {
+      const raw = typeof gameInfo.playByPlayData === 'string' ? JSON.parse(gameInfo.playByPlayData) : gameInfo.playByPlayData;
+      const allPlays = parsePlayByPlay(raw);
+      // Get the most recent 3 plays for display
+      recentPlays = allPlays.slice(-3).reverse(); // Show newest first
+    } catch (e) {
+      console.error('[InGame] Error parsing play-by-play data:', e);
+    }
+  }
 
   return (
     <vstack width="100%" maxWidth={600} backgroundColor="neutral-background-weak" padding="none" gap="large">
@@ -76,11 +90,38 @@ export function renderInGame({ gameInfo }: InGameProps) {
       </hstack>
       {/* Live Details Section */}
       <vstack width="100%" gap="small">
-        <text size="medium" color="#1976d2" weight="bold" alignment="center">
-          Game In Progress
+        <hstack alignment="center middle" gap="small">
+          <text size="medium" color="#1976d2" weight="bold" alignment="center">
+            Game In Progress
+          </text>
+          <text size="small" color="#4caf50" weight="bold">● LIVE</text>
+        </hstack>
+        <text size="xsmall" color="neutral-content-weak" alignment="center">
+          Auto-updating every 10 seconds
         </text>
-        {/* You can add inning, outs, runners, etc. here if available */}
       </vstack>
+      {/* Recent Plays Section */}
+      {recentPlays.length > 0 && (
+        <vstack width="100%" gap="small">
+          <text size="medium" weight="bold" color="neutral-content-strong" alignment="center">
+            Recent Plays
+          </text>
+          <vstack width="100%" backgroundColor="neutral-background-strong" padding="small" gap="small" cornerRadius="medium">
+            {recentPlays.map((half, idx) => (
+              <vstack key={`half-${idx}`} gap="small" width="100%">
+                <text size="small" weight="bold" color="#1976d2">
+                  {half.team} - {half.half === 'T' ? 'Top' : 'Bottom'} {half.inning}
+                </text>
+                {half.plays.map((play: any, pidx: number) => (
+                  <text key={`play-${idx}-${pidx}`} size="small" color="neutral-content-strong">
+                    {play.description}
+                  </text>
+                ))}
+              </vstack>
+            ))}
+          </vstack>
+        </vstack>
+      )}
     </vstack>
   );
 } 

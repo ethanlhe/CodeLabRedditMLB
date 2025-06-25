@@ -186,52 +186,75 @@ export function setupGameSelectionForm() {
                             });
 
                             try {
-                                // Fetch and store the initial boxscore data first
-                                const boxscoreResponse = await fetch(
-                                    `https://api.sportradar.us/mlb/trial/v8/en/games/${selectedGame.id}/boxscore.json`,
-                                    {
-                                        headers: {
-                                            'accept': 'application/json',
-                                            'x-api-key': API_KEY as string
+                                // Fetch and store the initial boxscore data using context.cache
+                                const boxscoreData = await gameContext.cache(
+                                    async () => {
+                                        console.log('[GameSelection] Fetching initial boxscore for game:', selectedGame.id);
+                                        const boxscoreResponse = await fetch(
+                                            `https://api.sportradar.us/mlb/trial/v8/en/games/${selectedGame.id}/boxscore.json`,
+                                            {
+                                                headers: {
+                                                    'accept': 'application/json',
+                                                    'x-api-key': API_KEY as string
+                                                }
+                                            }
+                                        );
+
+                                        if (!boxscoreResponse.ok) {
+                                            throw new Error(`Failed to fetch initial boxscore: ${boxscoreResponse.status}`);
                                         }
+
+                                        const data = await boxscoreResponse.json();
+                                        if (!data || !data.game) {
+                                            throw new Error('Invalid boxscore data received');
+                                        }
+
+                                        return data;
+                                    },
+                                    {
+                                        key: `boxscore-${selectedGame.id}`,
+                                        ttl: 10000, // 10 seconds for live games
                                     }
                                 );
-
-                                if (!boxscoreResponse.ok) {
-                                    throw new Error(`Failed to fetch initial boxscore: ${boxscoreResponse.status}`);
-                                }
-
-                                const boxscoreData = await boxscoreResponse.json();
-                                if (!boxscoreData || !boxscoreData.game) {
-                                    throw new Error('Invalid boxscore data received');
-                                }
 
                                 // Update the game data with boxscore info
                                 selectedGame.status = boxscoreData.game.status;
                                 
                                 // Store the complete game data in Redis
                                 await gameContext.redis.set(`game_${post.id}`, JSON.stringify(selectedGame));
-                                await gameContext.redis.set(`boxscore_${selectedGame.id}`, JSON.stringify(boxscoreData));
-                                await gameContext.redis.set(`boxscore_${selectedGame.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
                                 
                                 // Add to active games if live
                                 if (boxscoreData.game.status === 'in-progress') {
                                     await gameContext.redis.hset('active_games', selectedGame.id);
                                 }
 
-                                // Fetch and store the initial extended summary data
-                                const extendedSummaryResponse = await fetch(
-                                    `https://api.sportradar.us/mlb/trial/v8/en/games/${selectedGame.id}/extended_summary.json`,
-                                    {
-                                        headers: {
-                                            'accept': 'application/json',
-                                            'x-api-key': API_KEY as string
+                                // Fetch and store the initial extended summary data using context.cache
+                                const extendedSummaryData = await gameContext.cache(
+                                    async () => {
+                                        const extendedSummaryResponse = await fetch(
+                                            `https://api.sportradar.us/mlb/trial/v8/en/games/${selectedGame.id}/extended_summary.json`,
+                                            {
+                                                headers: {
+                                                    'accept': 'application/json',
+                                                    'x-api-key': API_KEY as string
+                                                }
+                                            }
+                                        );
+
+                                        if (extendedSummaryResponse.ok) {
+                                            return await extendedSummaryResponse.json();
+                                        } else {
+                                            console.error('[GameSelection] Failed to fetch extended summary:', extendedSummaryResponse.status);
+                                            return null;
                                         }
+                                    },
+                                    {
+                                        key: `extended-summary-${selectedGame.id}`,
+                                        ttl: 10000, // 10 seconds for live games
                                     }
                                 );
 
-                                if (extendedSummaryResponse.ok) {
-                                    const extendedSummaryData = await extendedSummaryResponse.json();
+                                if (extendedSummaryData) {
                                     if (extendedSummaryData?.home?.statistics && extendedSummaryData?.away?.statistics) {
                                         const homeStats = extractTeamStats(extendedSummaryData.home.statistics);
                                         const awayStats = extractTeamStats(extendedSummaryData.away.statistics);
@@ -247,9 +270,6 @@ export function setupGameSelectionForm() {
                                             away: { R: 0, H: 0, HR: 0, TB: 0, SB: 0, LOB: 0, E: 0, K: 0, SO: 0, BB: 0 }
                                         };
                                     }
-                                    
-                                    await gameContext.redis.set(`extended_summary_${selectedGame.id}`, JSON.stringify(extendedSummaryData));
-                                    await gameContext.redis.set(`extended_summary_${selectedGame.id}_timestamp`, Math.floor(Date.now() / 1000).toString());
                                     
                                     // Update the game data with team stats
                                     await gameContext.redis.set(`game_${post.id}`, JSON.stringify(selectedGame));
