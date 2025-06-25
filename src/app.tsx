@@ -92,6 +92,13 @@ export function setupBaseballApp() {
             const [gameData, setGameData] = useState<any>(null);
             const [gameId, setGameId] = useState<string | null>(null);
             const [lastUpdateTime, setLastUpdateTime] = useState<number>(Date.now());
+            const [API_KEY, setAPI_KEY] = useState<string | null>(null);
+
+            useAsync(async () => {
+                const key = await context.settings.get('sportsradar-api-key');
+                setAPI_KEY(key as string);
+            });
+
 
             // Use useAsync for initial data load
             const { loading, error, data: asyncGameData } = useAsync<any>(async () => {
@@ -408,9 +415,7 @@ export function setupBaseballApp() {
                     tabComponent = renderInGame({ gameInfo: displayGameData as GameInfo });
                 } else if (selectedTab === 'allplays') {
                     tabComponent = (
-                        <vstack width="100%" alignment="center middle" padding="large">
-                            <text size="large">All Plays coming soon!</text>
-                        </vstack>
+                        <PlayByPlayTab context={context} gameId={displayGameData.id} isLive={true} />
                     );
                 } else if (selectedTab === 'boxscore') {
                     tabComponent = (
@@ -430,7 +435,7 @@ export function setupBaseballApp() {
                     tabComponent = renderPostGame({ gameInfo: displayGameData as GameInfo });
                 } else if (selectedTab === 'playbyplay') {
                     tabComponent = (
-                        <PlayByPlayTab playByPlayData={displayGameData.playByPlayData} />
+                        <PlayByPlayTab context={context} gameId={displayGameData.id} isLive={false} />
                     );
                 } else if (selectedTab === 'boxscore') {
                     tabComponent = (
