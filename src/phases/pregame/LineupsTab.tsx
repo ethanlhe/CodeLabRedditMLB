@@ -86,23 +86,22 @@ export function LineupsTab({ gameInfo, homePlayers, awayPlayers }: LineupsTabPro
       </hstack>
       {/* Table Rows */}
       {(selectedLineupTeam === 'home' ? homePagination : awayPagination).currentItems.map((player: Player, idx: number) => {
-        console.log('[LineupsTab] Rendering player:', player);
         return (
           <hstack key={String(idx)} width="100%" gap="medium" alignment="start middle" padding="xsmall" backgroundColor={idx % 2 === 0 ? "#FAFAFA" : "#FFFFFF"}>
             <hstack gap="small" width="120px">
-              <text size="small" color="#000000">{player.first_name[0]}. {player.last_name}</text>
-              <text size="small" color="#5A7684">{player.primary_position}</text>
+              <text size="small" color="#000000">{player.firstName[0]}. {player.lastName}</text>
+              <text size="small" color="#5A7684">{player.primaryPosition}</text>
             </hstack>
-            <text size="small" color="#000000" width="45px">2</text>
-            <text size="small" color="#000000" width="45px">0</text>
-            <text size="small" color="#000000" width="45px">0</text>
-            <text size="small" color="#000000" width="45px">0</text>
-            <text size="small" color="#000000" width="45px">0</text>
-            <text size="small" color="#000000" width="45px">0</text>
-            <text size="small" color="#000000" width="45px">0</text>
-            <text size="small" color="#000000" width="45px">-</text>
-            <text size="small" color="#000000" width="45px">-</text>
-            <text size="small" color="#000000" width="45px">-</text>
+            <text size="small" color="#000000" width="45px">{player.ab ?? '-'}</text>
+            <text size="small" color="#000000" width="45px">{player.r ?? '-'}</text>
+            <text size="small" color="#000000" width="45px">{player.h ?? '-'}</text>
+            <text size="small" color="#000000" width="45px">{player.rbi ?? '-'}</text>
+            <text size="small" color="#000000" width="45px">{player.hr ?? '-'}</text>
+            <text size="small" color="#000000" width="45px">{player.bb ?? '-'}</text>
+            <text size="small" color="#000000" width="45px">{player.k ?? '-'}</text>
+            <text size="small" color="#000000" width="45px">{player.avg ?? '-'}</text>
+            <text size="small" color="#000000" width="45px">{player.obp ?? '-'}</text>
+            <text size="small" color="#000000" width="45px">{player.slg ?? '-'}</text>
           </hstack>
         );
       })}

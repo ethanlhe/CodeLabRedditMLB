@@ -1,4 +1,5 @@
 import { GameBoxscore, GameInfo, TeamStats } from '../types/game.js';
+import { Player } from '../types/game.ts';
 
 export function extractTeamStats(statistics: any): TeamStats {
   if (!statistics || !statistics.hitting || !statistics.hitting.overall) {
@@ -126,4 +127,23 @@ export function parsePlayByPlay(raw: any) {
     }
   }
   return result;
+}
+
+export function parsePlayersFromStatsApi(apiPlayers: any[]): Player[] {
+  return apiPlayers.map((p) => ({
+    id: p.id,
+    firstName: p.first_name,
+    lastName: p.last_name,
+    primaryPosition: p.primary_position,
+    ab: p.statistics?.hitting?.overall?.ab ?? 0,
+    r: p.statistics?.hitting?.overall?.r ?? 0,
+    h: p.statistics?.hitting?.overall?.h ?? 0,
+    rbi: p.statistics?.hitting?.overall?.rbi ?? 0,
+    hr: p.statistics?.hitting?.overall?.hr ?? 0,
+    bb: p.statistics?.hitting?.overall?.bb ?? 0,
+    k: p.statistics?.hitting?.overall?.k ?? 0,
+    avg: p.statistics?.hitting?.overall?.avg ?? '-',
+    obp: p.statistics?.hitting?.overall?.obp ?? '-',
+    slg: p.statistics?.hitting?.overall?.slg ?? '-',
+  }));
 }

@@ -8,7 +8,7 @@ import { GameStateControls } from './ui/components/GameControls.tsx';
 import { Header } from './ui/components/Header.tsx';
 import { GamePhase, GameInfo, Score, GameBoxscore } from './types/game.ts';
 import { setupGameSelectionForm } from './forms/GameSelectionForm.tsx';
-import { parseGameBoxscore, extractTeamStats } from './utils/gameParsers.js';
+import { parseGameBoxscore, extractTeamStats, parsePlayersFromStatsApi } from './utils/gameParsers.js';
 import { PlayByPlayTab } from './phases/postgame/PlayByPlayTab.tsx';
 import { LivePlayByPlayTab } from './phases/livegame/LivePlayByPlayTab.tsx';
 import { LineupsTab } from './phases/pregame/LineupsTab.tsx';
@@ -378,12 +378,44 @@ export function setupBaseballApp() {
             if (phase === 'pre') {
                 // Load players data for both summary and lineups tabs
                 const { data: homePlayers } = useAsync(async () => {
-                    const playersStr = await context.redis.get(`players_home_${context.postId}`);
-                    return playersStr ? JSON.parse(playersStr) : [];
+                    let playersStr = await context.redis.get(`players_home_${context.postId}`);
+                    if (playersStr) return JSON.parse(playersStr);
+
+                    const API_KEY = await context.settings.get('sportsradar-api-key');
+                    if (!API_KEY) return [];
+                    const homeTeamId = displayGameData.homeTeam.id;
+                    const url = `https://api.sportradar.com/mlb/trial/v8/en/seasons/2024/REG/teams/${homeTeamId}/statistics.json`;
+                    const res = await fetch(url, {
+                        headers: {
+                            accept: 'application/json',
+                            'x-api-key': API_KEY as string
+                        }
+                    });
+                    if (!res.ok) return [];
+                    const data = await res.json();
+                    const parsed = parsePlayersFromStatsApi(data.players);
+                    await context.redis.set(`players_home_${context.postId}`, JSON.stringify(parsed));
+                    return parsed;
                 });
                 const { data: awayPlayers } = useAsync(async () => {
-                    const playersStr2 = await context.redis.get(`players_away_${context.postId}`);
-                    return playersStr2 ? JSON.parse(playersStr2) : [];
+                    let playersStr = await context.redis.get(`players_away_${context.postId}`);
+                    if (playersStr) return JSON.parse(playersStr);
+
+                    const API_KEY = await context.settings.get('sportsradar-api-key');
+                    if (!API_KEY) return [];
+                    const awayTeamId = displayGameData.awayTeam.id;
+                    const url = `https://api.sportradar.com/mlb/trial/v8/en/seasons/2024/REG/teams/${awayTeamId}/statistics.json`;
+                    const res = await fetch(url, {
+                        headers: {
+                            accept: 'application/json',
+                            'x-api-key': API_KEY as string
+                        }
+                    });
+                    if (!res.ok) return [];
+                    const data = await res.json();
+                    const parsed = parsePlayersFromStatsApi(data.players);
+                    await context.redis.set(`players_away_${context.postId}`, JSON.stringify(parsed));
+                    return parsed;
                 });
 
                 if (selectedTab === 'summary') {

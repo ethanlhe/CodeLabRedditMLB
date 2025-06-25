@@ -17,10 +17,21 @@ export interface ProbablePitchers {
 }
 
 export interface Player {
+  id: string;
   firstName: string;
   lastName: string;
   primaryPosition: string;
-  [key: string]: string;
+  ab?: number;
+  r?: number;
+  h?: number;
+  rbi?: number;
+  hr?: number;
+  bb?: number;
+  k?: number;
+  avg?: string;
+  obp?: string;
+  slg?: string;
+  [key: string]: string | number | undefined;
 }
 
 export interface TeamStats {
