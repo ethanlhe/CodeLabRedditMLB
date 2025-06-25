@@ -172,13 +172,14 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
             url={awayLogo || 'fallback.png'}
             imageWidth={48}
             imageHeight={48}
+            resizeMode="fit"
             description={`${gameInfo.awayTeam.name} logo`}
           />
           <text size="medium" weight="bold" alignment="center" color="neutral-content-strong">{gameInfo.awayTeam.name}</text>
           <text size="small" color="neutral-content-strong" alignment="center">({gameInfo.awayTeam.record})</text>
         </vstack>
         {/* VS */}
-        <vstack alignment="center middle" gap="small" minWidth={80}>
+        <vstack alignment="center middle" gap="small" minWidth={60}>
           <text size="medium" weight="bold" color="#576F76" alignment="center">vs.</text>
         </vstack>
         {/* Home Team */}
@@ -187,6 +188,7 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
             url={homeLogo || 'fallback.png'}
             imageWidth={48}
             imageHeight={48}
+            resizeMode="fit"
             description={`${gameInfo.homeTeam.name} logo`}
           />
           <text size="medium" weight="bold" alignment="center" color="neutral-content-strong">{gameInfo.homeTeam.name}</text>
