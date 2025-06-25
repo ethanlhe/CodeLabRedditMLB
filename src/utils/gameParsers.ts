@@ -85,6 +85,7 @@ export function parseGameBoxscore(data: GameBoxscore): GameInfo {
       runs: data.away.runs || 0
     },
     currentTime: formattedTime,
+    timezone,
     status,
     probablePitchers: data.probable_pitchers ? {
       home: data.probable_pitchers.home?.full_name || null,

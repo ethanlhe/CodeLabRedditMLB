@@ -91,11 +91,33 @@ export interface GameBoxscore {
     timezone: string;
     [key: string]: string;
   };
-  home: TeamInfo;
-  away: TeamInfo;
+  home: TeamInfo & {
+    scoring?: InningScore[];
+    runs?: number;
+    win?: number;
+    loss?: number;
+  };
+  away: TeamInfo & {
+    scoring?: InningScore[];
+    runs?: number;
+    win?: number;
+    loss?: number;
+  };
   probable_pitchers?: {
     home?: { full_name: string };
     away?: { full_name: string };
     [key: string]: { full_name: string } | undefined;
   };
+  linescore?: {
+    innings: Array<{
+      number: number;
+      home?: { runs: number; hits: number; errors: number };
+      away?: { runs: number; hits: number; errors: number };
+    }>;
+  };
+  weather?: {
+    condition: string;
+    temp: number;
+  };
+  broadcasts?: Array<{ network: string }>;
 }
