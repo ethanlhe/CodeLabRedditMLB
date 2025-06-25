@@ -12,7 +12,6 @@ import { parseGameBoxscore, extractTeamStats, parsePlayersFromStatsApi } from '.
 import { PlayByPlayTab } from './phases/postgame/PlayByPlayTab.tsx';
 import { LivePlayByPlayTab } from './phases/livegame/LivePlayByPlayTab.tsx';
 import { LineupsTab } from './phases/pregame/LineupsTab.tsx';
-import * as chrono from 'chrono-node';
 
 export function setupBaseballApp() {
     Devvit.configure({

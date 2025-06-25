@@ -1,7 +1,6 @@
 import { Devvit, useState, useAsync, FormOnSubmitEvent } from '@devvit/public-api';
 import { MLB_LOGOS } from '../../assets/logos/mlb.ts';
 import { GameInfo, Player } from '../../types/game.ts';
-import * as chrono from 'chrono-node';
 import { DateTime } from 'luxon';
 
 const REDIS_COUNTDOWN_MATCHES_KEY = 'countdown:matches';
@@ -220,17 +219,42 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
 
 function getCountdown(scheduled: string, currentTime: string, timezone: string): { days: number; hours: number; } {
   // Combine scheduled date and time
-  // Assume scheduled is in format 'April 17, 2024' and currentTime is '10:15 AM'
+  // scheduled is in format 'Thursday, May 22, 2025' and currentTime is '10:15 AM'
   // timezone is e.g. 'America/New_York'
   const scheduledDateTimeString = `${scheduled} ${currentTime}`;
-  // Try to parse with luxon
-  let gameTime = DateTime.fromFormat(scheduledDateTimeString, 'MMMM d, 2024 h:mm a', { zone: timezone });
+  
+  // Try to parse with luxon using the actual format
+  let gameTime = DateTime.fromFormat(scheduledDateTimeString, 'EEEE, MMMM d, yyyy h:mm a', { zone: timezone });
   if (!gameTime.isValid) {
-    // Try fallback format
-    gameTime = DateTime.fromFormat(scheduledDateTimeString, 'MMMM d 2024 h:mm a', { zone: timezone });
+    // Try fallback format without comma after day
+    gameTime = DateTime.fromFormat(scheduledDateTimeString, 'EEEE, MMMM d yyyy h:mm a', { zone: timezone });
   }
+  if (!gameTime.isValid) {
+    // Try another fallback format
+    gameTime = DateTime.fromFormat(scheduledDateTimeString, 'MMMM d, yyyy h:mm a', { zone: timezone });
+  }
+  if (!gameTime.isValid) {
+    // Try parsing just the date part first, then add time
+    const dateOnly = DateTime.fromFormat(scheduled, 'EEEE, MMMM d, yyyy', { zone: timezone });
+    if (dateOnly.isValid) {
+      const timeOnly = DateTime.fromFormat(currentTime, 'h:mm a', { zone: timezone });
+      if (timeOnly.isValid) {
+        gameTime = dateOnly.set({
+          hour: timeOnly.hour,
+          minute: timeOnly.minute
+        });
+      }
+    }
+  }
+  if (!gameTime.isValid) {
+    // If all parsing fails, return 0 values
+    console.warn('Failed to parse game time:', scheduledDateTimeString);
+    return { days: 0, hours: 0 };
+  }
+  
   const now = DateTime.now().setZone(timezone);
   const diff = gameTime.diff(now, ['days', 'hours', 'minutes']).toObject();
+  
   return {
     days: Math.max(0, Math.floor(diff.days ?? 0)),
     hours: Math.max(0, Math.floor(diff.hours ?? 0)),
