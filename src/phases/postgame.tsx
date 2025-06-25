@@ -29,7 +29,7 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
     : `${homeWon ? gameInfo.homeTeam.name : gameInfo.awayTeam.name} defeat ${homeWon ? gameInfo.awayTeam.name : gameInfo.homeTeam.name}`;
 
   return (
-    <vstack>
+    <vstack width="100%" maxWidth={600}>
       {/* Score Row */}
       <hstack width="100%" alignment="center middle" gap="large" padding="small">
         {/* Away Team */}
@@ -38,7 +38,8 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
             <image 
               url={awayLogo} 
               imageWidth={48} 
-              imageHeight={48} 
+              imageHeight={48}
+              resizeMode="fit"
               description={`${gameInfo.awayTeam.name} logo`} 
             />
           ) : null}
@@ -46,7 +47,7 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
           <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.awayTeam.record}</text>
         </vstack>
         {/* Score */}
-        <vstack alignment="center middle" gap="small" minWidth={80}>
+        <vstack alignment="center middle" gap="small" minWidth={60}>
           <hstack alignment="center middle" gap="small">
             {awayWon ? (
               <text size="xxlarge" weight="bold" color="neutral-content-strong" alignment="center">
@@ -78,7 +79,8 @@ export function renderPostGame({ gameInfo }: PostGameProps) {
             <image 
               url={homeLogo} 
               imageWidth={48} 
-              imageHeight={48} 
+              imageHeight={48}
+              resizeMode="fit"
               description={`${gameInfo.homeTeam.name} logo`} 
             />
           ) : null}

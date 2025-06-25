@@ -43,8 +43,9 @@ export function renderInGame({ gameInfo }: InGameProps) {
           {awayLogo ? (
             <image 
               url={awayLogo} 
-              imageWidth={48} 
-              imageHeight={48} 
+              imageWidth={48}
+              imageHeight={48}
+              resizeMode="fit"
               description={`${gameInfo.awayTeam.name} logo`} 
             />
           ) : null}
@@ -52,7 +53,7 @@ export function renderInGame({ gameInfo }: InGameProps) {
           <text size="small" color="neutral-content-strong" alignment="center">{gameInfo.awayTeam.record}</text>
         </vstack>
         {/* Score */}
-        <vstack alignment="center middle" gap="small" minWidth={80}>
+        <vstack alignment="center middle" gap="small" minWidth={60}>
           <text size="xxlarge" weight="bold" color="#222" alignment="center">
             {gameInfo.awayTeam.runs} - {gameInfo.homeTeam.runs}
           </text>
@@ -64,7 +65,8 @@ export function renderInGame({ gameInfo }: InGameProps) {
             <image 
               url={homeLogo} 
               imageWidth={48} 
-              imageHeight={48} 
+              imageHeight={48}
+              resizeMode="fit"
               description={`${gameInfo.homeTeam.name} logo`} 
             />
           ) : null}
