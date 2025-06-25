@@ -11,6 +11,20 @@ export function LineupsTab({ gameInfo, homePlayers, awayPlayers }: LineupsTabPro
   const safeHomePlayers = Array.isArray(homePlayers) ? homePlayers : [];
   const safeAwayPlayers = Array.isArray(awayPlayers) ? awayPlayers : [];
 
+  // Lineup stats columns
+  const statColumns = [
+    { key: 'ab', label: 'AB', width: 36 },
+    { key: 'r', label: 'R', width: 36 },
+    { key: 'h', label: 'H', width: 36 },
+    { key: 'rbi', label: 'RBI', width: 36 },
+    { key: 'hr', label: 'HR', width: 36 },
+    { key: 'bb', label: 'BB', width: 36 },
+    { key: 'k', label: 'K', width: 36 },
+    { key: 'avg', label: 'AVG', width: 44 },
+    { key: 'obp', label: 'OBP', width: 44 },
+    { key: 'slg', label: 'SLG', width: 44 },
+  ];
+
   const [selectedLineupTeam, setSelectedLineupTeam] = useState<'home' | 'away'>('home');
   const [homePage, setHomePage] = useState(0);
   const [awayPage, setAwayPage] = useState(0);
@@ -31,6 +45,18 @@ export function LineupsTab({ gameInfo, homePlayers, awayPlayers }: LineupsTabPro
     currentPage * itemsPerPage + itemsPerPage
   );
 
+  // Set up horizontal pagination state
+  const isCompact = false; // or true for testing
+  const [statPage, setStatPage] = useState(0);
+  const statsPerPage = isCompact ? 4 : statColumns.length;
+  const statPagesCount = Math.ceil(statColumns.length / statsPerPage);
+  // const isFirstStatPage = statPage === 0;
+  // const isLastStatPage = statPage === statPagesCount - 1;
+  const currentStatColumns = statColumns.slice(
+    statPage * statsPerPage,
+    statPage * statsPerPage + statsPerPage
+  );
+
   const handlePrevPage = () => {
     if (!isFirstPage) {
       setCurrentPage(currentPage - 1);
@@ -48,16 +74,11 @@ export function LineupsTab({ gameInfo, homePlayers, awayPlayers }: LineupsTabPro
       {/* Table Header */}
       <hstack width="100%" gap="medium" alignment="start middle" padding="xsmall">
         <text size="small" weight="bold" color="#000000" width="120px">Players</text>
-        <text size="small" weight="bold" color="#000000" width="36px">AB</text>
-        <text size="small" weight="bold" color="#000000" width="36px">R</text>
-        <text size="small" weight="bold" color="#000000" width="36px">H</text>
-        <text size="small" weight="bold" color="#000000" width="36px">RBI</text>
-        <text size="small" weight="bold" color="#000000" width="36px">HR</text>
-        <text size="small" weight="bold" color="#000000" width="36px">BB</text>
-        <text size="small" weight="bold" color="#000000" width="36px">K</text>
-        <text size="small" weight="bold" color="#000000" width="44px">AVG</text>
-        <text size="small" weight="bold" color="#000000" width="44px">OBP</text>
-        <text size="small" weight="bold" color="#000000" width="44px">SLP</text>
+        {currentStatColumns.map(col => (
+          <text key={col.key} size="small" weight="bold" color="#000000" width={`${col.width}px`}>
+            {col.label}
+          </text>
+        ))}
       </hstack>
       {/* Table Rows */}
       {currentItems.map((player: Player, idx: number) => {
@@ -67,16 +88,11 @@ export function LineupsTab({ gameInfo, homePlayers, awayPlayers }: LineupsTabPro
               <text size="small" color="#000000">{player.firstName[0]}. {player.lastName}</text>
               <text size="small" color="#5A7684">{player.primaryPosition}</text>
             </hstack>
-            <text size="small" color="#000000" width="36px">{player.ab ?? '-'}</text>
-            <text size="small" color="#000000" width="36px">{player.r ?? '-'}</text>
-            <text size="small" color="#000000" width="36px">{player.h ?? '-'}</text>
-            <text size="small" color="#000000" width="36px">{player.rbi ?? '-'}</text>
-            <text size="small" color="#000000" width="36px">{player.hr ?? '-'}</text>
-            <text size="small" color="#000000" width="36px">{player.bb ?? '-'}</text>
-            <text size="small" color="#000000" width="36px">{player.k ?? '-'}</text>
-            <text size="small" color="#000000" width="44px">{player.avg ?? '-'}</text>
-            <text size="small" color="#000000" width="44px">{player.obp ?? '-'}</text>
-            <text size="small" color="#000000" width="44px">{player.slg ?? '-'}</text>
+            {currentStatColumns.map(col => (
+              <text key={col.key} size="small" color="#000000" width={`${col.width}px`}>
+                {player[col.key] ?? '-'}
+              </text>
+            ))}
           </hstack>
         );
       })}
