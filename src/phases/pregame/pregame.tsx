@@ -42,17 +42,31 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
   const awayLogo = MLB_LOGOS[awayAbbr];
   const homeLogo = MLB_LOGOS[homeAbbr];
 
-  // Memoize countdown calculation to prevent infinite loops
-  const { data: countdown } = useAsync(async () => {
-    return getCountdown(gameInfo.date, gameInfo.currentTime, gameInfo.timezone);
-  });
-
-  const days = countdown?.days ?? 0;
-  const hours = countdown?.hours ?? 0;
+  // Simple countdown calculation without complex DateTime operations
+  let days = 0;
+  let hours = 0;
+  try {
+    // Simple date parsing without luxon to prevent infinite recursion
+    const scheduledDateTimeString = `${gameInfo.date} ${gameInfo.currentTime}`;
+    const gameTime = new Date(scheduledDateTimeString);
+    const now = new Date();
+    
+    if (!isNaN(gameTime.getTime())) {
+      const diffMs = gameTime.getTime() - now.getTime();
+      if (diffMs > 0) {
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        days = Math.max(0, diffDays);
+        hours = Math.max(0, diffHours);
+      }
+    }
+  } catch (error) {
+    console.error('Error calculating countdown:', error);
+    days = 0;
+    hours = 0;
+  }
 
   const [hasVoted, setHasVoted] = useState(false);
-
-  const [subscriptionState, setSubscriptionState] = useState<CountdownSubscriptionState>(CountdownSubscriptionState.AVAILABLE);
 
   // Check if user is already subscribed and if match is too close
   const { data: isSubscribed } = useAsync(async () => {
@@ -62,18 +76,22 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
     return users.includes(userName);
   });
 
-  // Set subscription state based on isSubscribed and match time
-  useAsync(async () => {
+  // Set subscription state based on isSubscribed and match time - simplified to prevent infinite loops
+  const [subscriptionState, setSubscriptionState] = useState<CountdownSubscriptionState>(CountdownSubscriptionState.AVAILABLE);
+  
+  // Update subscription state when isSubscribed changes
+  if (isSubscribed !== undefined) {
     const startTime = new Date(`${gameInfo.date} ${gameInfo.currentTime}`).getTime();
     if (startTime - Date.now() < 15 * 60 * 1000) {
-      setSubscriptionState(CountdownSubscriptionState.UNAVAILABLE);
-    } else if (isSubscribed) {
+      if (subscriptionState !== CountdownSubscriptionState.UNAVAILABLE) {
+        setSubscriptionState(CountdownSubscriptionState.UNAVAILABLE);
+      }
+    } else if (isSubscribed && subscriptionState !== CountdownSubscriptionState.SUBSCRIBED) {
       setSubscriptionState(CountdownSubscriptionState.SUBSCRIBED);
-    } else {
+    } else if (!isSubscribed && subscriptionState !== CountdownSubscriptionState.AVAILABLE) {
       setSubscriptionState(CountdownSubscriptionState.AVAILABLE);
     }
-    return null;
-  });
+  }
 
   // Handler for Remind Me
   const handleRemindMe = async () => {
@@ -92,25 +110,46 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
   };
 
   const handleVote = async (team: string) => {
-    await voteForTeam(team);
-    const pollResults = await getPollResults(gameInfo.homeTeam.name, gameInfo.awayTeam.name);
-    setHomeVotes(pollResults.home);
-    setAwayVotes(pollResults.away);
-    setHomePct(pollResults.homePct);
-    setAwayPct(pollResults.awayPct);
-    setTotalVotes(pollResults.total);
-    setHasVoted(true);
+    try {
+      await voteForTeam(team);
+      const pollResults = await getPollResults(gameInfo.homeTeam.name, gameInfo.awayTeam.name);
+      setHomeVotes(pollResults.home);
+      setAwayVotes(pollResults.away);
+      setHomePct(pollResults.homePct);
+      setAwayPct(pollResults.awayPct);
+      setTotalVotes(pollResults.total);
+      setHasVoted(true);
+    } catch (error) {
+      console.error('Error handling vote:', error);
+    }
   };
 
   const { loading, error, data: pollResults } = useAsync(
     () => getPollResults(gameInfo.homeTeam.name, gameInfo.awayTeam.name),
   );
 
-  const [homeVotes, setHomeVotes] = useState(pollResults?.home ?? 0);
-  const [awayVotes, setAwayVotes] = useState(pollResults?.away ?? 0);
-  const [homePct, setHomePct] = useState(pollResults?.homePct ?? 0);
-  const [awayPct, setAwayPct] = useState(pollResults?.awayPct ?? 0);
-  const [totalVotes, setTotalVotes] = useState(pollResults?.total ?? 0);
+  const [homeVotes, setHomeVotes] = useState(0);
+  const [awayVotes, setAwayVotes] = useState(0);
+  const [homePct, setHomePct] = useState(0);
+  const [awayPct, setAwayPct] = useState(0);
+  const [totalVotes, setTotalVotes] = useState(0);
+
+  // Update state when pollResults changes - simplified to prevent infinite loops
+  if (pollResults && !hasVoted) {
+    const newHomeVotes = pollResults.home;
+    const newAwayVotes = pollResults.away;
+    const newTotal = pollResults.total;
+    const newHomePct = pollResults.homePct;
+    const newAwayPct = pollResults.awayPct;
+    
+    if (homeVotes !== newHomeVotes || awayVotes !== newAwayVotes) {
+      setHomeVotes(newHomeVotes);
+      setAwayVotes(newAwayVotes);
+      setHomePct(newHomePct);
+      setAwayPct(newAwayPct);
+      setTotalVotes(newTotal);
+    }
+  }
 
   return (
     <vstack width="100%" maxWidth={600} padding="small" gap="small" cornerRadius="large">

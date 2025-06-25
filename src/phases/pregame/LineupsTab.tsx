@@ -7,39 +7,41 @@ interface LineupsTabProps {
   awayPlayers: Player[];
 }
 
-// Pagination hook for vertical (up/down) navigation
-function useVerticalPagination<ItemType>(items: ItemType[], itemsPerPage: number) {
-  const [currentPage, setCurrentPage] = useState(0);
-  const pagesCount = Math.ceil(items.length / itemsPerPage);
-  const isFirstPage = currentPage === 0;
-  const isLastPage = currentPage === pagesCount - 1;
-  return {
-    currentPage,
-    pagesCount,
-    currentItems: items.slice(
-      currentPage * itemsPerPage,
-      currentPage * itemsPerPage + itemsPerPage
-    ),
-    isFirstPage,
-    isLastPage,
-    toPrevPage: isFirstPage ? undefined : () => setCurrentPage(currentPage - 1),
-    toNextPage: isLastPage ? undefined : () => setCurrentPage(currentPage + 1),
-  };
-}
-
 export function LineupsTab({ gameInfo, homePlayers, awayPlayers }: LineupsTabProps) {
   const safeHomePlayers = Array.isArray(homePlayers) ? homePlayers : [];
   const safeAwayPlayers = Array.isArray(awayPlayers) ? awayPlayers : [];
 
   const [selectedLineupTeam, setSelectedLineupTeam] = useState<'home' | 'away'>('home');
+  const [homePage, setHomePage] = useState(0);
+  const [awayPage, setAwayPage] = useState(0);
 
-  // Use separate pagination for each team
-  const homePagination = useVerticalPagination(safeHomePlayers, 10);
-  const awayPagination = useVerticalPagination(safeAwayPlayers, 10);
+  const itemsPerPage = 10;
+  
+  // Get current team data
+  const currentPlayers = selectedLineupTeam === 'home' ? safeHomePlayers : safeAwayPlayers;
+  const currentPage = selectedLineupTeam === 'home' ? homePage : awayPage;
+  const setCurrentPage = selectedLineupTeam === 'home' ? setHomePage : setAwayPage;
+  
+  const pagesCount = Math.ceil(currentPlayers.length / itemsPerPage);
+  const isFirstPage = currentPage === 0;
+  const isLastPage = currentPage === pagesCount - 1;
+  
+  const currentItems = currentPlayers.slice(
+    currentPage * itemsPerPage,
+    currentPage * itemsPerPage + itemsPerPage
+  );
 
-  // Get current pagination based on selected team
-  const currentPagination = selectedLineupTeam === 'home' ? homePagination : awayPagination;
-  const currentPlayers = currentPagination.currentItems;
+  const handlePrevPage = () => {
+    if (!isFirstPage) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (!isLastPage) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
   return (
     <vstack width="100%" height="380px" gap="none" backgroundColor="neutral-background-weak" cornerRadius="medium" padding="none">
@@ -58,7 +60,7 @@ export function LineupsTab({ gameInfo, homePlayers, awayPlayers }: LineupsTabPro
         <text size="small" weight="bold" color="#000000" width="44px">SLP</text>
       </hstack>
       {/* Table Rows */}
-      {currentPlayers.map((player: Player, idx: number) => {
+      {currentItems.map((player: Player, idx: number) => {
         return (
           <hstack key={String(idx)} width="100%" gap="medium" alignment="start middle" padding="xsmall" backgroundColor={idx % 2 === 0 ? "neutral-background-weak" : "neutral-background-strong"}>
             <hstack gap="small" width="120px">
@@ -103,8 +105,8 @@ export function LineupsTab({ gameInfo, homePlayers, awayPlayers }: LineupsTabPro
           </hstack>
         </hstack>
         <spacer grow />
-        <button onPress={currentPagination.toPrevPage} icon="up" disabled={currentPagination.isFirstPage} />
-        <button onPress={currentPagination.toNextPage} icon="down" disabled={currentPagination.isLastPage} />
+        <button onPress={handlePrevPage} icon="up" disabled={isFirstPage} />
+        <button onPress={handleNextPage} icon="down" disabled={isLastPage} />
       </hstack>
     </vstack>
   );

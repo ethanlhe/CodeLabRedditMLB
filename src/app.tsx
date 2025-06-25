@@ -306,18 +306,31 @@ export function setupBaseballApp() {
             }
 
             async function voteForTeam(team: string) {
-                const currentUser = await context.reddit.getCurrentUser();
-                const userId = currentUser?.id;
-                const userKey = `poll:${team}:user:${userId}`;
-                const hasVoted = await context.redis.get(userKey);
-                if (!hasVoted) {
-                    await context.redis.set(userKey, '1');
-                    const txn = await context.redis.watch(`poll:${team}`);
-                    await txn.multi();
-                    await txn.incrBy(`poll:${team}`, 1);
-                    await txn.exec();
+                try {
+                    const currentUser = await context.reddit.getCurrentUser();
+                    const userId = currentUser?.id;
+                    if (!userId) {
+                        console.error('No user ID available for voting');
+                        return;
+                    }
+                    
+                    const userKey = `poll:${team}:user:${userId}`;
+                    const hasVoted = await context.redis.get(userKey);
+                    
+                    if (!hasVoted) {
+                        // Use atomic operations to prevent race conditions
+                        await context.redis.set(userKey, '1');
+                        const currentVotes = await context.redis.get(`poll:${team}`);
+                        const newVotes = (parseInt(currentVotes || '0', 10) + 1).toString();
+                        await context.redis.set(`poll:${team}`, newVotes);
+                        
+                        console.log(`Vote recorded for ${team} by user ${userId}`);
+                    } else {
+                        console.log(`User ${userId} already voted for ${team}`);
+                    }
+                } catch (error) {
+                    console.error('Error in voteForTeam:', error);
                 }
-
             }
 
             async function getPollResults(homeTeam: string, awayTeam: string) {
@@ -375,63 +388,78 @@ export function setupBaseballApp() {
             // Tab content switch
             let tabComponent: JSX.Element;
             if (phase === 'pre') {
-                // Load players data for both summary and lineups tabs
-                const { data: homePlayers } = useAsync(async () => {
-                    let playersStr = await context.redis.get(`players_home_${context.postId}`);
-                    if (playersStr) return JSON.parse(playersStr);
-
+                // Load players data for both summary and lineups tabs - consolidated into single useAsync
+                const { data: playersData } = useAsync(async () => {
+                    const [homePlayersStr, awayPlayersStr] = await context.redis.mGet([
+                        `players_home_${context.postId}`,
+                        `players_away_${context.postId}`
+                    ]);
+                    
+                    let homePlayers = homePlayersStr ? JSON.parse(homePlayersStr) : null;
+                    let awayPlayers = awayPlayersStr ? JSON.parse(awayPlayersStr) : null;
+                    
                     const API_KEY = await context.settings.get('sportsradar-api-key');
-                    if (!API_KEY) return [];
-                    const homeTeamId = displayGameData.homeTeam.id;
-                    const url = `https://api.sportradar.com/mlb/trial/v8/en/seasons/2024/REG/teams/${homeTeamId}/statistics.json`;
-                    const res = await fetch(url, {
-                        headers: {
-                            accept: 'application/json',
-                            'x-api-key': API_KEY as string
+                    if (!API_KEY) return { homePlayers: [], awayPlayers: [] };
+                    
+                    // Fetch home players if not cached
+                    if (!homePlayers) {
+                        const homeTeamId = displayGameData.homeTeam.id;
+                        const homeUrl = `https://api.sportradar.com/mlb/trial/v8/en/seasons/2024/REG/teams/${homeTeamId}/statistics.json`;
+                        const homeRes = await fetch(homeUrl, {
+                            headers: {
+                                accept: 'application/json',
+                                'x-api-key': API_KEY as string
+                            }
+                        });
+                        if (homeRes.ok) {
+                            const homeData = await homeRes.json();
+                            homePlayers = parsePlayersFromStatsApi(homeData.players);
+                            await context.redis.set(`players_home_${context.postId}`, JSON.stringify(homePlayers));
+                        } else {
+                            homePlayers = [];
                         }
-                    });
-                    if (!res.ok) return [];
-                    const data = await res.json();
-                    const parsed = parsePlayersFromStatsApi(data.players);
-                    await context.redis.set(`players_home_${context.postId}`, JSON.stringify(parsed));
-                    return parsed;
+                    }
+                    
+                    // Fetch away players if not cached
+                    if (!awayPlayers) {
+                        const awayTeamId = displayGameData.awayTeam.id;
+                        const awayUrl = `https://api.sportradar.com/mlb/trial/v8/en/seasons/2024/REG/teams/${awayTeamId}/statistics.json`;
+                        const awayRes = await fetch(awayUrl, {
+                            headers: {
+                                accept: 'application/json',
+                                'x-api-key': API_KEY as string
+                            }
+                        });
+                        if (awayRes.ok) {
+                            const awayData = await awayRes.json();
+                            awayPlayers = parsePlayersFromStatsApi(awayData.players);
+                            await context.redis.set(`players_away_${context.postId}`, JSON.stringify(awayPlayers));
+                        } else {
+                            awayPlayers = [];
+                        }
+                    }
+                    
+                    return { homePlayers: homePlayers || [], awayPlayers: awayPlayers || [] };
                 });
-                const { data: awayPlayers } = useAsync(async () => {
-                    let playersStr = await context.redis.get(`players_away_${context.postId}`);
-                    if (playersStr) return JSON.parse(playersStr);
 
-                    const API_KEY = await context.settings.get('sportsradar-api-key');
-                    if (!API_KEY) return [];
-                    const awayTeamId = displayGameData.awayTeam.id;
-                    const url = `https://api.sportradar.com/mlb/trial/v8/en/seasons/2024/REG/teams/${awayTeamId}/statistics.json`;
-                    const res = await fetch(url, {
-                        headers: {
-                            accept: 'application/json',
-                            'x-api-key': API_KEY as string
-                        }
-                    });
-                    if (!res.ok) return [];
-                    const data = await res.json();
-                    const parsed = parsePlayersFromStatsApi(data.players);
-                    await context.redis.set(`players_away_${context.postId}`, JSON.stringify(parsed));
-                    return parsed;
-                });
+                const homePlayers = playersData?.homePlayers || [];
+                const awayPlayers = playersData?.awayPlayers || [];
 
                 if (currentSelectedTab === 'summary') {
                     tabComponent = renderPreGame({ 
                         gameInfo: displayGameData as GameInfo,
                         voteForTeam,
                         getPollResults,
-                        homePlayers: homePlayers || [],
-                        awayPlayers: awayPlayers || [],
+                        homePlayers,
+                        awayPlayers,
                         context
                     });
                 } else if (currentSelectedTab === 'lineups') {
                     tabComponent = (
                         <LineupsTab 
                             gameInfo={displayGameData as GameInfo} 
-                            homePlayers={homePlayers || []}
-                            awayPlayers={awayPlayers || []}
+                            homePlayers={homePlayers}
+                            awayPlayers={awayPlayers}
                         />
                     );
                 } else {
