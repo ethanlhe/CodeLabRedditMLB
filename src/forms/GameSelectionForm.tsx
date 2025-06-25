@@ -289,7 +289,7 @@ export function setupGameSelectionForm() {
 
     // Add a menu item to the subreddit menu for instantiating the new experience post
     Devvit.addMenuItem({
-        label: 'Add Baseball Scorecard-main',
+        label: 'Add Baseball Scorecard-mainv2',
         location: 'subreddit',
         forUserType: 'moderator',
         onPress: (_event, context) => {

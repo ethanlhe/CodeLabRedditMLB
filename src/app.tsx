@@ -9,8 +9,7 @@ import { Header } from './ui/components/Header.tsx';
 import { GamePhase, GameInfo, Score, GameBoxscore } from './types/game.ts';
 import { setupGameSelectionForm } from './forms/GameSelectionForm.tsx';
 import { parseGameBoxscore, extractTeamStats, parsePlayersFromStatsApi } from './utils/gameParsers.js';
-import { PlayByPlayTab } from './phases/postgame/PlayByPlayTab.tsx';
-import { LivePlayByPlayTab } from './phases/livegame/LivePlayByPlayTab.tsx';
+import { PlayByPlayTab } from './phases/livegame/LivePlayByPlayTab.tsx';
 import { LineupsTab } from './phases/pregame/LineupsTab.tsx';
 
 export function setupBaseballApp() {
@@ -540,10 +539,7 @@ export function setupBaseballApp() {
                     tabComponent = renderInGame({ gameInfo: displayGameData as GameInfo });
                 } else if (currentSelectedTab === 'allplays') {
                     tabComponent = (
-                        <LivePlayByPlayTab 
-                            playByPlayData={displayGameData.playByPlayData} 
-                            gameId={displayGameData.id}
-                        />
+                        <PlayByPlayTab context={context} gameId={displayGameData.id} isLive={true} />
                     );
                 } else if (currentSelectedTab === 'boxscore') {
                     tabComponent = (
@@ -565,7 +561,7 @@ export function setupBaseballApp() {
                     tabComponent = renderPostGame({ gameInfo: displayGameData as GameInfo });
                 } else if (currentSelectedTab === 'playbyplay') {
                     tabComponent = (
-                        <PlayByPlayTab playByPlayData={displayGameData.playByPlayData} />
+                        <PlayByPlayTab context={context} gameId={displayGameData.id} isLive={false} />
                     );
                 } else if (currentSelectedTab === 'boxscore') {
                     tabComponent = (
