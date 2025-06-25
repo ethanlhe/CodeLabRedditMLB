@@ -27,9 +27,11 @@ interface PreGameProps {
   homePlayers: Player[];
   awayPlayers: Player[];
   context: any;
+  userVoteStatus: { hasVoted: boolean; votedTeam: string | null };
+  pollResults: { home: number; away: number; total: number; homePct: number; awayPct: number };
 }
 
-export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlayers, awayPlayers, context }: PreGameProps) {
+export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlayers, awayPlayers, context, userVoteStatus, pollResults }: PreGameProps) {
   if (!gameInfo || !gameInfo.awayTeam || !gameInfo.homeTeam) {
     return <text color="red">No game data available (missing team info).</text>;
   }
@@ -67,6 +69,14 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
   }
 
   const [hasVoted, setHasVoted] = useState(false);
+
+  // Use the passed userVoteStatus directly to prevent flashing and disappearing bars
+  const currentHasVoted = userVoteStatus?.hasVoted || false;
+
+  // Only update local state if it's different to prevent unnecessary re-renders
+  if (hasVoted !== currentHasVoted) {
+    setHasVoted(currentHasVoted);
+  }
 
   // Check if user is already subscribed and if match is too close
   const { data: isSubscribed } = useAsync(async () => {
@@ -111,6 +121,9 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
 
   const handleVote = async (team: string) => {
     try {
+      // Immediately set hasVoted to true to prevent flashing
+      setHasVoted(true);
+      
       await voteForTeam(team);
       const pollResults = await getPollResults(gameInfo.homeTeam.name, gameInfo.awayTeam.name);
       setHomeVotes(pollResults.home);
@@ -118,15 +131,14 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
       setHomePct(pollResults.homePct);
       setAwayPct(pollResults.awayPct);
       setTotalVotes(pollResults.total);
-      setHasVoted(true);
+      
+      console.log(`Vote handled for ${team}. New results:`, pollResults);
     } catch (error) {
       console.error('Error handling vote:', error);
+      // Revert hasVoted if vote failed
+      setHasVoted(false);
     }
   };
-
-  const { loading, error, data: pollResults } = useAsync(
-    () => getPollResults(gameInfo.homeTeam.name, gameInfo.awayTeam.name),
-  );
 
   const [homeVotes, setHomeVotes] = useState(0);
   const [awayVotes, setAwayVotes] = useState(0);
@@ -134,21 +146,20 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
   const [awayPct, setAwayPct] = useState(0);
   const [totalVotes, setTotalVotes] = useState(0);
 
-  // Update state when pollResults changes - simplified to prevent infinite loops
-  if (pollResults && !hasVoted) {
-    const newHomeVotes = pollResults.home;
-    const newAwayVotes = pollResults.away;
-    const newTotal = pollResults.total;
-    const newHomePct = pollResults.homePct;
-    const newAwayPct = pollResults.awayPct;
-    
-    if (homeVotes !== newHomeVotes || awayVotes !== newAwayVotes) {
-      setHomeVotes(newHomeVotes);
-      setAwayVotes(newAwayVotes);
-      setHomePct(newHomePct);
-      setAwayPct(newAwayPct);
-      setTotalVotes(newTotal);
-    }
+  // Use the passed pollResults directly to prevent loading delays
+  const currentHomeVotes = pollResults?.home || 0;
+  const currentAwayVotes = pollResults?.away || 0;
+  const currentHomePct = pollResults?.homePct || 0;
+  const currentAwayPct = pollResults?.awayPct || 0;
+  const currentTotalVotes = pollResults?.total || 0;
+
+  // Update local state to keep it in sync
+  if (homeVotes !== currentHomeVotes || awayVotes !== currentAwayVotes) {
+    setHomeVotes(currentHomeVotes);
+    setAwayVotes(currentAwayVotes);
+    setHomePct(currentHomePct);
+    setAwayPct(currentAwayPct);
+    setTotalVotes(currentTotalVotes);
   }
 
   return (
@@ -224,17 +235,17 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
         <hstack width="100%" alignment="start middle">
           <text size="small" color="#888" weight="bold">COMMUNITY PREDICTION</text>
           <spacer grow />
-          <text size="small" color="#888">{totalVotes} votes</text>
+          <text size="small" color="#888">{currentTotalVotes} votes</text>
         </hstack>
         {/* Vote Buttons */}
         <hstack width="100%" gap="small" alignment="center middle">
           <spacer grow />
-          {!hasVoted && (
+          {!currentHasVoted && (
             <button appearance="secondary" size="small" onPress={() => handleVote(gameInfo.homeTeam.name)}>
               Vote for {gameInfo.homeTeam.name}
             </button>
           )}
-          {!hasVoted && (
+          {!currentHasVoted && (
             <button appearance="secondary" size="small" onPress={() => handleVote(gameInfo.awayTeam.name)}>
               Vote for {gameInfo.awayTeam.name}
             </button>
@@ -244,16 +255,16 @@ export function renderPreGame({ gameInfo, voteForTeam, getPollResults, homePlaye
         {/* Home Team Bar */}
         <hstack width="100%" gap="small" alignment="center middle">
           <spacer grow />
-          <vstack width={`${homePct}%`} height="40px" backgroundColor="#B0BEC5" cornerRadius="medium" alignment="center middle">
-            <text size="medium" weight="bold" color="#0F1A1C">{homePct}% {gameInfo.homeTeam.name}</text>
+          <vstack width={`${currentHomePct}%`} height="40px" backgroundColor="#B0BEC5" cornerRadius="medium" alignment="center middle">
+            <text size="medium" weight="bold" color="#0F1A1C">{currentHomePct}% {gameInfo.homeTeam.name}</text>
           </vstack>
           <spacer grow />
         </hstack>
         {/* Away Team Bar */}
         <hstack width="100%" gap="small" alignment="center middle">
           <spacer grow />
-          <vstack width={`${awayPct}%`} height="40px" backgroundColor="#FF7043" cornerRadius="medium" alignment="center middle">
-            <text size="medium" weight="bold" color="#0F1A1C">{awayPct}% {gameInfo.awayTeam.name}</text>
+          <vstack width={`${currentAwayPct}%`} height="40px" backgroundColor="#FF7043" cornerRadius="medium" alignment="center middle">
+            <text size="medium" weight="bold" color="#0F1A1C">{currentAwayPct}% {gameInfo.awayTeam.name}</text>
           </vstack>
           <spacer grow />
         </hstack>

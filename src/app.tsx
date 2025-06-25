@@ -314,38 +314,102 @@ export function setupBaseballApp() {
                         return;
                     }
                     
-                    const userKey = `poll:${team}:user:${userId}`;
-                    const hasVoted = await context.redis.get(userKey);
+                    // Check if user has already voted for either team
+                    const homeTeamKey = `poll:${displayGameData.homeTeam.name}:user:${userId}`;
+                    const awayTeamKey = `poll:${displayGameData.awayTeam.name}:user:${userId}`;
+                    const [hasVotedHome, hasVotedAway] = await context.redis.mGet([homeTeamKey, awayTeamKey]);
                     
-                    if (!hasVoted) {
-                        // Use atomic operations to prevent race conditions
-                        await context.redis.set(userKey, '1');
-                        const currentVotes = await context.redis.get(`poll:${team}`);
-                        const newVotes = (parseInt(currentVotes || '0', 10) + 1).toString();
-                        await context.redis.set(`poll:${team}`, newVotes);
-                        
-                        console.log(`Vote recorded for ${team} by user ${userId}`);
-                    } else {
-                        console.log(`User ${userId} already voted for ${team}`);
+                    if (hasVotedHome || hasVotedAway) {
+                        console.log(`User ${userId} already voted for a team`);
+                        return;
                     }
+                    
+                    // Record the vote atomically
+                    const userKey = `poll:${team}:user:${userId}`;
+                    await context.redis.set(userKey, '1');
+                    
+                    // Increment vote count atomically
+                    const voteKey = `poll:${team}`;
+                    const currentVotes = await context.redis.get(voteKey);
+                    const newVotes = (parseInt(currentVotes || '0', 10) + 1).toString();
+                    await context.redis.set(voteKey, newVotes);
+                    
+                    console.log(`Vote recorded for ${team} by user ${userId}. New total: ${newVotes}`);
                 } catch (error) {
                     console.error('Error in voteForTeam:', error);
                 }
             }
 
             async function getPollResults(homeTeam: string, awayTeam: string) {
-                const [home, away] = await context.redis.mGet([`poll:${homeTeam}`, `poll:${awayTeam}`]);
-                const homeVotes = parseInt(home ?? '0', 10);
-                const awayVotes = parseInt(away ?? '0', 10);
-                const total = homeVotes + awayVotes;
-                return {
-                    home: homeVotes,
-                    away: awayVotes,
-                    total,
-                    homePct: total ? Math.round((homeVotes / total) * 100) : 0,
-                    awayPct: total ? Math.round((awayVotes / total) * 100) : 0,
-                };
+                try {
+                    const [home, away] = await context.redis.mGet([`poll:${homeTeam}`, `poll:${awayTeam}`]);
+                    const homeVotes = parseInt(home ?? '0', 10);
+                    const awayVotes = parseInt(away ?? '0', 10);
+                    const total = homeVotes + awayVotes;
+                    
+                    console.log(`Poll results - Home: ${homeVotes}, Away: ${awayVotes}, Total: ${total}`);
+                    
+                    return {
+                        home: homeVotes,
+                        away: awayVotes,
+                        total,
+                        homePct: total ? Math.round((homeVotes / total) * 100) : 0,
+                        awayPct: total ? Math.round((awayVotes / total) * 100) : 0,
+                    };
+                } catch (error) {
+                    console.error('Error getting poll results:', error);
+                    return {
+                        home: 0,
+                        away: 0,
+                        total: 0,
+                        homePct: 0,
+                        awayPct: 0,
+                    };
+                }
             }
+
+            // Check if user has already voted for this game - at app level for persistence
+            const { data: userVoteStatus } = useAsync(async () => {
+                try {
+                    const currentUser = await context.reddit.getCurrentUser();
+                    const userId = currentUser?.id;
+                    if (!userId) return { hasVoted: false, votedTeam: null };
+                    
+                    const homeTeamKey = `poll:${displayGameData.homeTeam.name}:user:${userId}`;
+                    const awayTeamKey = `poll:${displayGameData.awayTeam.name}:user:${userId}`;
+                    const [hasVotedHome, hasVotedAway] = await context.redis.mGet([homeTeamKey, awayTeamKey]);
+                    
+                    if (hasVotedHome) {
+                        return { hasVoted: true, votedTeam: displayGameData.homeTeam.name };
+                    } else if (hasVotedAway) {
+                        return { hasVoted: true, votedTeam: displayGameData.awayTeam.name };
+                    }
+                    
+                    return { hasVoted: false, votedTeam: null };
+                } catch (error) {
+                    console.error('Error checking user vote status:', error);
+                    return { hasVoted: false, votedTeam: null };
+                }
+            });
+
+            // Get poll results at app level for persistence across tabs
+            const { data: pollResults } = useAsync(async () => {
+                try {
+                    return await getPollResults(displayGameData.homeTeam.name, displayGameData.awayTeam.name);
+                } catch (error) {
+                    console.error('Error getting poll results:', error);
+                    return {
+                        home: 0,
+                        away: 0,
+                        total: 0,
+                        homePct: 0,
+                        awayPct: 0,
+                    };
+                }
+            });
+
+            // Provide default poll results to prevent loading delay
+            const currentPollResults = pollResults || { home: 0, away: 0, total: 0, homePct: 0, awayPct: 0 };
 
             // Determine phase and render appropriate component
             let phase: GamePhase;
@@ -452,7 +516,9 @@ export function setupBaseballApp() {
                         getPollResults,
                         homePlayers,
                         awayPlayers,
-                        context
+                        context,
+                        userVoteStatus: userVoteStatus || { hasVoted: false, votedTeam: null },
+                        pollResults: currentPollResults
                     });
                 } else if (currentSelectedTab === 'lineups') {
                     tabComponent = (
