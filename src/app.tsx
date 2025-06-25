@@ -367,10 +367,10 @@ export function setupBaseballApp() {
 
             // Tab state, reset if phase changes
             const [selectedTab, setSelectedTab] = useState(tabs[0].key);
-            // Ensure selectedTab is valid for the current phase
-            if (!tabs.some(tab => tab.key === selectedTab)) {
-                setSelectedTab(tabs[0].key);
-            }
+            
+            // Only update selectedTab if it's not valid for current phase, but do it safely
+            const validTabKeys = tabs.map(tab => tab.key);
+            const currentSelectedTab = validTabKeys.includes(selectedTab) ? selectedTab : tabs[0].key;
 
             // Tab content switch
             let tabComponent: JSX.Element;
@@ -417,7 +417,7 @@ export function setupBaseballApp() {
                     return parsed;
                 });
 
-                if (selectedTab === 'summary') {
+                if (currentSelectedTab === 'summary') {
                     tabComponent = renderPreGame({ 
                         gameInfo: displayGameData as GameInfo,
                         voteForTeam,
@@ -426,7 +426,7 @@ export function setupBaseballApp() {
                         awayPlayers: awayPlayers || [],
                         context
                     });
-                } else if (selectedTab === 'lineups') {
+                } else if (currentSelectedTab === 'lineups') {
                     tabComponent = (
                         <LineupsTab 
                             gameInfo={displayGameData as GameInfo} 
@@ -442,16 +442,16 @@ export function setupBaseballApp() {
                     );
                 }
             } else if (phase === 'live') {
-                if (selectedTab === 'summary') {
+                if (currentSelectedTab === 'summary') {
                     tabComponent = renderInGame({ gameInfo: displayGameData as GameInfo });
-                } else if (selectedTab === 'allplays') {
+                } else if (currentSelectedTab === 'allplays') {
                     tabComponent = (
                         <LivePlayByPlayTab 
                             playByPlayData={displayGameData.playByPlayData} 
                             gameId={displayGameData.id}
                         />
                     );
-                } else if (selectedTab === 'boxscore') {
+                } else if (currentSelectedTab === 'boxscore') {
                     tabComponent = (
                         <LiveBoxScoreTab 
                             gameInfo={displayGameData as GameInfo} 
@@ -467,13 +467,13 @@ export function setupBaseballApp() {
                     );
                 }
             } else if (phase === 'post') {
-                if (selectedTab === 'summary') {
+                if (currentSelectedTab === 'summary') {
                     tabComponent = renderPostGame({ gameInfo: displayGameData as GameInfo });
-                } else if (selectedTab === 'playbyplay') {
+                } else if (currentSelectedTab === 'playbyplay') {
                     tabComponent = (
                         <PlayByPlayTab playByPlayData={displayGameData.playByPlayData} />
                     );
-                } else if (selectedTab === 'boxscore') {
+                } else if (currentSelectedTab === 'boxscore') {
                     tabComponent = (
                         <BoxScoreTab 
                             gameInfo={displayGameData as GameInfo} 
@@ -508,7 +508,7 @@ export function setupBaseballApp() {
                             <button
                                 key={tab.key}
                                 size="small"
-                                appearance={selectedTab === tab.key ? 'secondary' : 'plain'}
+                                appearance={currentSelectedTab === tab.key ? 'secondary' : 'plain'}
                                 onPress={() => setSelectedTab(tab.key)}
                             >
                                 {tab.label}
